@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-
+import { User, Mail, Phone, Building2, Calendar, Edit3, Save, X, Award, Briefcase, MapPin } from 'lucide-react';
 
 export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
@@ -15,7 +15,9 @@ export default function Profile() {
   });
 
   const stats = [
-    
+    { label: 'Жобалар', value: '12', icon: Briefcase, color: 'from-blue-500 to-cyan-500' },
+    { label: 'Жетістіктер', value: '8', icon: Award, color: 'from-purple-500 to-pink-500' },
+    { label: 'Бағалау', value: '4.8', icon: Award, color: 'from-green-500 to-emerald-500' },
   ];
 
   const handleSave = () => {
@@ -32,13 +34,13 @@ export default function Profile() {
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-6">
               <div className="w-24 h-24 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md border-4 border-white/30">
-                
+                <User className="w-12 h-12 text-white" />
               </div>
               <div>
                 <h1 className="text-4xl font-bold mb-2">{profile.name}</h1>
                 <p className="text-xl text-white/90 mb-1">{profile.position}</p>
                 <p className="text-white/80 flex items-center gap-2">
-                  
+                  <Building2 className="w-4 h-4" />
                   {profile.company}
                 </p>
               </div>
@@ -49,12 +51,12 @@ export default function Profile() {
             >
               {isEditing ? (
                 <>
-                  
+                  <X className="w-5 h-5" />
                   Болдырмау
                 </>
               ) : (
                 <>
-                  
+                  <Edit3 className="w-5 h-5" />
                   Өңдеу
                 </>
               )}
@@ -65,10 +67,12 @@ export default function Profile() {
           <div className="grid grid-cols-3 gap-4 mt-8">
             {stats.map((stat, idx) => (
               <div key={idx} className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
-                
+                <div className={`w-10 h-10 bg-gradient-to-br ${stat.color} rounded-lg flex items-center justify-center mb-2`}>
+                  <stat.icon className="w-5 h-5 text-white" />
                 </div>
-                
-              
+                <p className="text-2xl font-bold">{stat.value}</p>
+                <p className="text-sm text-white/80">{stat.label}</p>
+              </div>
             ))}
           </div>
         </div>
@@ -81,6 +85,7 @@ export default function Profile() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-600 flex items-center gap-2">
+              <Mail className="w-4 h-4 text-blue-600" />
               Email
             </label>
             {isEditing ? (
@@ -97,7 +102,7 @@ export default function Profile() {
 
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-600 flex items-center gap-2">
-              
+              <Phone className="w-4 h-4 text-green-600" />
               Телефон
             </label>
             {isEditing ? (
@@ -114,7 +119,7 @@ export default function Profile() {
 
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-600 flex items-center gap-2">
-              
+              <MapPin className="w-4 h-4 text-red-600" />
               Орналасқан жері
             </label>
             {isEditing ? (
@@ -131,7 +136,7 @@ export default function Profile() {
 
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-600 flex items-center gap-2">
-              
+              <Calendar className="w-4 h-4 text-purple-600" />
               Қосылған күні
             </label>
             <p className="text-slate-900 text-lg px-4 py-3 bg-slate-50 rounded-xl">{profile.joinDate}</p>
@@ -160,7 +165,7 @@ export default function Profile() {
               onClick={handleSave}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-xl transition flex items-center gap-2 shadow-lg"
             >
-              
+              <Save className="w-5 h-5" />
               Сақтау
             </button>
           </div>
