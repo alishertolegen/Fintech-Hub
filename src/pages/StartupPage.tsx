@@ -4,8 +4,20 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ExternalLink, BarChart2, FileText, Globe } from 'lucide-react';
 
 const API = 'http://localhost:8080/api/startups';
+const METRICS_API = 'http://localhost:8080/api/startup-metrics';
 
 type MetricsSnapshot = { mrr?: number | null; users?: number | null };
+
+type MetricRecord = {
+  _id?: string;
+  startupId?: string;
+  date?: string | number | Date; // ваша "date" (в примере — точка времени, например месяц)
+  mrr?: number | null;
+  activeUsers?: number | null;
+  burnRate?: number | null;
+  other?: Record<string, any> | null;
+  // возможны дополнительные поля
+};
 
 type Startup = {
   id?: string;
@@ -50,6 +62,56 @@ function formatDate(iso?: string | number | Date): string {
   }
 }
 
+/** Простой sparkline на SVG для массива чисел */
+function Sparkline({ data, width = 220, height = 48 }: { data: (number | null | undefined)[]; width?: number; height?: number }) {
+  const vals = data.map((v) => (v == null ? null : Number(v)));
+  const valid = vals.filter((v) => v != null) as number[];
+  if (valid.length === 0) {
+    return <div className="text-xs text-gray-500 dark:text-gray-400">нет данных</div>;
+  }
+
+  const pad = 4;
+  const w = Math.max(40, width);
+  const h = Math.max(20, height);
+  const min = Math.min(...valid);
+  const max = Math.max(...valid);
+  const range = max === min ? 1 : max - min;
+  const stepX = (w - pad * 2) / Math.max(1, vals.length - 1);
+
+  const points: [number, number][] = vals.map((v, i) => {
+    const x = pad + i * stepX;
+    const y = v == null ? h - pad : pad + (1 - (Number(v) - min) / range) * (h - pad * 2);
+    return [x, y];
+  });
+
+  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' ');
+
+  // last valid point
+  const lastValidIndex = [...vals].reverse().findIndex((v) => v != null);
+  const lastIndex = lastValidIndex === -1 ? 0 : vals.length - 1 - lastValidIndex;
+  const lastPoint = points[lastIndex];
+
+  return (
+    <svg width={w} height={h} className="block">
+      <defs>
+        <linearGradient id="grad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="rgba(79,70,229,0.12)" />
+          <stop offset="100%" stopColor="rgba(79,70,229,0.00)" />
+        </linearGradient>
+      </defs>
+
+      {/* fill */}
+      <path d={`${pathD} L ${w - pad} ${h - pad} L ${pad} ${h - pad} Z`} fill="url(#grad)" stroke="none" />
+
+      {/* line */}
+      <path d={pathD} fill="none" stroke="currentColor" strokeWidth={1.5} style={{ color: '#4f46e5' }} />
+
+      {/* last dot */}
+      {lastPoint && <circle cx={lastPoint[0]} cy={lastPoint[1]} r={2.5} fill="#4f46e5" />}
+    </svg>
+  );
+}
+
 export default function StartupPage(): JSX.Element {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -58,6 +120,11 @@ export default function StartupPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Метрики
+  const [metrics, setMetrics] = useState<MetricRecord[] | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(false);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!slug) return;
     let canceled = false;
@@ -65,7 +132,6 @@ export default function StartupPage(): JSX.Element {
       setLoading(true);
       setError(null);
       try {
-        // Попытка получить стартап по path param (slug или id — бэкенд должен уметь)
         const res = await fetch(`${API}/${encodeURIComponent(slug)}`, { credentials: 'include' });
         if (res.status === 404) {
           throw new Error('Стартап не найден');
@@ -92,6 +158,49 @@ export default function StartupPage(): JSX.Element {
     };
   }, [slug]);
 
+  // Когда стартап загружен — запрашиваем метрики
+  useEffect(() => {
+    if (!startup) return;
+    const id = startup.id ?? startup._id ?? startup.slug;
+    if (!id) return;
+    let canceled = false;
+    (async () => {
+      setMetricsLoading(true);
+      setMetricsError(null);
+      try {
+        const url = `${METRICS_API}?startupId=${encodeURIComponent(String(id))}`;
+        const res = await fetch(url, { credentials: 'include' });
+        if (!res.ok) {
+          const txt = await res.text();
+          let msg = `Ошибка ${res.status}`;
+          try {
+            const json = JSON.parse(txt);
+            msg = json.error ?? json.message ?? msg;
+          } catch {}
+          throw new Error(msg);
+        }
+        const data = (await res.json()) as MetricRecord[] | { data?: MetricRecord[] };
+        const arr = Array.isArray(data) ? data : (Array.isArray((data as any).data) ? (data as any).data : []);
+        // Нормализация: поле date, потом fallback на timestamp/createdAt
+        const normalized = arr
+          .map((m: { date: any; }) => ({
+            ...m,
+            date: m.date ?? (m as any).timestamp ?? (m as any).createdAt ?? null,
+          }))
+          .filter((m: { date: null; }) => m.date != null)
+          .sort((a: { date: any; }, b: { date: any; }) => new Date(String(a.date)).getTime() - new Date(String(b.date)).getTime());
+        if (!canceled) setMetrics(normalized);
+      } catch (e: any) {
+        if (!canceled) setMetricsError(e.message ?? 'Не удалось загрузить метрики');
+      } finally {
+        if (!canceled) setMetricsLoading(false);
+      }
+    })();
+    return () => {
+      canceled = true;
+    };
+  }, [startup]);
+
   const idForApi = () => startup?.id ?? startup?._id ?? startup?.slug;
 
   async function handleDelete() {
@@ -109,7 +218,6 @@ export default function StartupPage(): JSX.Element {
         credentials: 'include',
       });
       if (res.status === 204 || res.ok) {
-        // Успех
         navigate('/startups');
       } else {
         const txt = await res.text();
@@ -126,6 +234,17 @@ export default function StartupPage(): JSX.Element {
       setDeleting(false);
     }
   }
+
+  // серии для sparkline (используем mrr и activeUsers)
+  const mrrSeries = metrics?.map((m) => (m.mrr == null ? null : Number(m.mrr))) ?? [];
+  const usersSeries = metrics?.map((m) => (m.activeUsers == null ? null : Number(m.activeUsers))) ?? [];
+  const burnSeries = metrics?.map((m) => (m.burnRate == null ? null : Number(m.burnRate))) ?? [];
+
+  const lastMetric = metrics && metrics.length > 0 ? metrics[metrics.length - 1] : null;
+  const displayedMrr = lastMetric?.mrr ?? startup?.metricsSnapshot?.mrr ?? 0;
+  const displayedUsers = lastMetric?.activeUsers ?? startup?.metricsSnapshot?.users ?? 0;
+  const displayedBurn = lastMetric?.burnRate ?? null;
+  const lastTimestamp = lastMetric?.date ?? startup?.updatedAt ?? startup?.createdAt ?? null;
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -163,7 +282,7 @@ export default function StartupPage(): JSX.Element {
                 })()}
 
                 <div className="inline-flex items-center gap-2">
-                  <BarChart2 size={16} /> MRR: <strong>{startup.metricsSnapshot?.mrr ?? 0}</strong>
+                  <BarChart2 size={16} /> MRR: <strong>{displayedMrr}</strong>
                 </div>
 
                 <div className="inline-flex items-center gap-2">
@@ -185,12 +304,109 @@ export default function StartupPage(): JSX.Element {
             <p className="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-line">{startup.description ?? '—'}</p>
           </section>
 
+          {/* Метрики */}
+          <section className="mt-6">
+            <h3 className="text-lg font-medium">Метрики</h3>
+
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">MRR (последнее)</div>
+                    <div className="text-2xl font-semibold">{displayedMrr}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{lastTimestamp ? formatDate(lastTimestamp) : ''}</div>
+                  </div>
+                  <div className="w-40">
+                    {metricsLoading ? (
+                      <div className="text-xs text-gray-500">Загрузка...</div>
+                    ) : metricsError ? (
+                      <div className="text-xs text-red-500">{metricsError}</div>
+                    ) : (
+                      <Sparkline data={mrrSeries} />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Active Users (последнее)</div>
+                    <div className="text-2xl font-semibold">{displayedUsers}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{lastTimestamp ? formatDate(lastTimestamp) : ''}</div>
+                  </div>
+                  <div className="w-40">
+                    {metricsLoading ? (
+                      <div className="text-xs text-gray-500">Загрузка...</div>
+                    ) : metricsError ? (
+                      <div className="text-xs text-red-500">{metricsError}</div>
+                    ) : (
+                      <Sparkline data={usersSeries} />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Burn Rate (последнее)</div>
+                    <div className="text-2xl font-semibold">{displayedBurn != null ? displayedBurn : '—'}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{lastTimestamp ? formatDate(lastTimestamp) : ''}</div>
+                  </div>
+                  <div className="w-40">
+                    {metricsLoading ? (
+                      <div className="text-xs text-gray-500">Загрузка...</div>
+                    ) : metricsError ? (
+                      <div className="text-xs text-red-500">{metricsError}</div>
+                    ) : (
+                      <Sparkline data={burnSeries} />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* История */}
+            <div className="mt-4">
+              <h4 className="text-sm font-medium mb-2">История</h4>
+              {metricsLoading && <div className="text-sm text-gray-500">Загрузка метрик...</div>}
+              {metricsError && <div className="text-sm text-red-500">{metricsError}</div>}
+              {!metricsLoading && (!metrics || metrics.length === 0) && <div className="text-sm text-gray-500">История метрик отсутствует.</div>}
+              {!metricsLoading && metrics && metrics.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-gray-500 dark:text-gray-400">
+                        <th className="py-2 pr-4">Дата</th>
+                        <th className="py-2 pr-4">MRR</th>
+                        <th className="py-2 pr-4">Active Users</th>
+                        <th className="py-2 pr-4">Burn Rate</th>
+                        <th className="py-2 pr-4">Other</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {metrics.slice().reverse().map((m, i) => (
+                        <tr key={m._id ?? i} className="border-t border-gray-100 dark:border-zinc-800">
+                          <td className="py-2 pr-4">{formatDate(m.date)}</td>
+                          <td className="py-2 pr-4">{m.mrr ?? '—'}</td>
+                          <td className="py-2 pr-4">{m.activeUsers ?? '—'}</td>
+                          <td className="py-2 pr-4">{m.burnRate ?? '—'}</td>
+                          <td className="py-2 pr-4">{m.other ? JSON.stringify(m.other) : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
+
           <section className="mt-6">
             <h3 className="text-lg font-medium">Дополнительные файлы</h3>
             {startup.attachments && startup.attachments.length > 0 ? (
               <ul className="mt-2 space-y-2">
                 {startup.attachments.map((a, i) => {
-                  // предполагается, что attachment — это URL или относительный путь
                   const href = String(a);
                   const name = href.split('/').pop() ?? `file-${i + 1}`;
                   return (
@@ -198,7 +414,7 @@ export default function StartupPage(): JSX.Element {
                       <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm">
                         <FileText size={16} /> {name}
                       </a>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">{/* можно добавить размер/тип */}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400" />
                     </li>
                   );
                 })}

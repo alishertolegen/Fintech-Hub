@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import StartupPage from './pages/StartupPage.tsx';
 import { ProtectedRoute } from './auth/ProtectedRoute.tsx';
+import MyStartupsPage from './pages/MyStartupsPage.tsx';
 
 function App() {
   const location = useLocation();
@@ -50,7 +51,7 @@ function App() {
             }
           />
           <Route path="/startups/:slug" element={<StartupPage/>} />
-
+          <Route path="/my-startups" element={<MyStartupsPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
