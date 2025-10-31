@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState, JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, ExternalLink, BarChart2, FileText, Globe, Plus } from 'lucide-react';
-import { useAuth } from '../auth/AuthContext'; // поправь путь, если нужно
+import { useAuth } from '../auth/AuthContext';
 
 const API = 'http://localhost:8080/api/startups';
 
@@ -13,7 +13,8 @@ type Startup = {
   _id?: string;
   name?: string;
   slug?: string;
-  founderId?: string;
+  founderId?: any; // может быть string или объект или вложенный founder
+  founder?: any;
   stage?: string;
   industry?: string;
   shortPitch?: string;
@@ -58,7 +59,6 @@ export default function MyStartupsPage(): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch only user's startups
   useEffect(() => {
     let canceled = false;
     if (!user) {
@@ -70,12 +70,19 @@ export default function MyStartupsPage(): JSX.Element {
       setLoading(true);
       setError(null);
       try {
+        // попытка найти подходящий id в объекте user
+        const founderCandidate =
+          (user as any).id ?? (user as any)._id ?? (user as any).userId ?? (user as any).sub ?? '';
+
         const params = new URLSearchParams();
-        // backend должен поддерживать фильтр founderId — если нет, замените на подходящий (например /api/users/me/startups)
-        params.set('founderId', user.id ?? '');
+        // ставим параметр только если есть непустой кандидат
+        if (founderCandidate) params.set('founderId', String(founderCandidate));
         if (searchTerm.trim()) params.set('q', searchTerm.trim());
 
-        const url = `${API}?${params.toString()}`;
+        const url = `${API}${params.toString() ? '?' + params.toString() : ''}`;
+
+        // для отладки можно раскомментировать:
+        // console.debug('Fetching startups URL:', url, 'founderCandidate:', founderCandidate);
 
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -92,7 +99,34 @@ export default function MyStartupsPage(): JSX.Element {
         }
 
         const data = (await res.json()) as Startup[];
-        if (!canceled) setStartups(Array.isArray(data) ? data : []);
+        if (canceled) return;
+
+        // Сопоставительная фильтрация на клиенте: защищает от ситуаций,
+        // когда бэкенд игнорирует founderId или использует другую структуру.
+        const founder = String(founderCandidate);
+        const clientFiltered = Array.isArray(data)
+          ? data.filter((s) => {
+              // возможные варианты хранения автора
+              const candidates = [
+                s.founderId,
+                s.founder?._id,
+                s.founder?.['id'],
+                s._id,
+                s.id,
+                // иногда founder хранится как объект или ссылка
+                typeof s.founderId === 'object' ? s.founderId?._id ?? s.founderId?.id : undefined,
+                typeof s.founder === 'string' ? s.founder : undefined
+              ].filter(Boolean).map(String);
+
+              return founder ? candidates.includes(founder) : false;
+            })
+          : [];
+
+        // если сервер вернул правильный отфильтрованный массив (все элементы совпадают),
+        // используем его; иначе используем clientFiltered (надёжнее).
+        const final = Array.isArray(data) && data.length > 0 && clientFiltered.length === data.length ? data : clientFiltered;
+
+        setStartups(final);
       } catch (e: any) {
         if (!canceled) setError(e.message ?? 'Не удалось загрузить стартаптар');
       } finally {
