@@ -1,14 +1,14 @@
-// src/pages/CreateStartup.tsx
 import React, { JSX, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Image, PlusSquare, BarChart2 } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext'; // <- используем контекст аутентификации
 
 const API = 'http://localhost:8080/api/startups';
 const METRICS_API = 'http://localhost:8080/api/startup-metrics';
 
 type CreatePayload = {
   name: string;
-  founderId?: string;
+  founderId?: string; // опционально — будет установлено автоматически из auth
   stage?: string;
   industry?: string;
   shortPitch?: string;
@@ -22,22 +22,23 @@ type CreatePayload = {
 
 export default function CreateStartup(): JSX.Element {
   const nav = useNavigate();
+  const { user } = useAuth() as any; // подстрой под вашу реализацию useAuth()
+  // получаем id пользователя из объекта user (поддерживаем несколько возможных полей)
+  const currentUserId = user?.id ?? user?._id ?? user?.sub ?? undefined;
 
   const [name, setName] = useState('');
-  const [founderId, setFounderId] = useState('');
   const [stage, setStage] = useState('idea');
   const [industry, setIndustry] = useState('');
   const [shortPitch, setShortPitch] = useState('');
   const [description, setDescription] = useState('');
   const [website, setWebsite] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
-  const [attachmentsText, setAttachmentsText] = useState(''); // newline or comma separated
+  const [attachmentsText, setAttachmentsText] = useState('');
   const [visibility, setVisibility] = useState('public');
 
   // initial metrics (optional)
   const [withMetric, setWithMetric] = useState(false);
   const [metricDate, setMetricDate] = useState<string>(() => {
-    // default to today's date (YYYY-MM-DD)
     const d = new Date();
     const yyyy = d.getUTCFullYear();
     const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
@@ -47,7 +48,7 @@ export default function CreateStartup(): JSX.Element {
   const [metricMrr, setMetricMrr] = useState<number | ''>('');
   const [metricActiveUsers, setMetricActiveUsers] = useState<number | ''>('');
   const [metricBurnRate, setMetricBurnRate] = useState<number | ''>('');
-  const [metricOther, setMetricOther] = useState<string>(''); // JSON text
+  const [metricOther, setMetricOther] = useState<string>('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,13 +72,13 @@ export default function CreateStartup(): JSX.Element {
       return;
     }
 
-    // parse attachments
     const attachments = parseAttachments(attachmentsText);
 
-    // build payload
+    // build payload — НЕ даём пользователю вводить founderId вручную.
     const payload: CreatePayload = {
       name: name.trim(),
-      founderId: founderId.trim() || undefined,
+      // include founderId automatically only if we have it from auth
+      ...(currentUserId ? { founderId: String(currentUserId) } : {}),
       stage: stage || undefined,
       industry: industry.trim() || undefined,
       shortPitch: shortPitch.trim() || undefined,
@@ -85,7 +86,7 @@ export default function CreateStartup(): JSX.Element {
       website: website.trim() || undefined,
       logoUrl: logoUrl.trim() || undefined,
       metricsSnapshot: { mrr: 0, users: 0 },
-      attachments: attachments,
+      attachments,
       visibility: visibility || 'public',
     };
 
@@ -111,26 +112,20 @@ export default function CreateStartup(): JSX.Element {
       }
 
       const created = await res.json();
-
-      // created may use id / _id / slug
       const createdId = (created && (created.id ?? created._id ?? created.slug)) || null;
 
-      // optionally create initial metric
+      // создание метрики (если включено)
       if (withMetric && createdId) {
-        // validate metricOther json
         let parsedOther: Record<string, any> | undefined = undefined;
         if (metricOther && metricOther.trim()) {
           try {
             parsedOther = JSON.parse(metricOther);
           } catch {
-            // try to be forgiving: attempt to wrap key:value pairs into object? but better to report error
             throw new Error('Поле "Other" метрики должно быть валидным JSON.');
           }
         }
 
-        const isoDate = metricDate
-          ? new Date(metricDate + 'T00:00:00Z').toISOString()
-          : new Date().toISOString();
+        const isoDate = metricDate ? new Date(metricDate + 'T00:00:00Z').toISOString() : new Date().toISOString();
 
         const metricPayload: any = {
           startupId: String(createdId),
@@ -141,7 +136,6 @@ export default function CreateStartup(): JSX.Element {
           other: parsedOther ?? undefined,
         };
 
-        // Remove undefined fields
         Object.keys(metricPayload).forEach((k) => metricPayload[k] === undefined && delete metricPayload[k]);
 
         const mres = await fetch(METRICS_API, {
@@ -160,10 +154,8 @@ export default function CreateStartup(): JSX.Element {
           } catch {
             msg = txt || msg;
           }
-          // don't abort navigation — show warning and continue
           setError(`Стартап создан, но не удалось создать метрику: ${msg}`);
           setSuccessMsg('Стартап создан (метрика не создана).');
-          // navigate anyway to created page
           setTimeout(() => {
             if (createdId) nav(`/startups/${encodeURIComponent(String(createdId))}`);
           }, 800);
@@ -172,7 +164,6 @@ export default function CreateStartup(): JSX.Element {
       }
 
       setSuccessMsg('Стартап успешно создан.');
-      // navigate to created startup page (id/slug)
       if (createdId) {
         nav(`/startups/${encodeURIComponent(String(createdId))}`);
       }
@@ -196,11 +187,6 @@ export default function CreateStartup(): JSX.Element {
         <div>
           <label className="text-sm font-medium">Название</label>
           <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full p-2 border rounded" placeholder="QazTech" />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium">Founder ID</label>
-          <input value={founderId} onChange={(e) => setFounderId(e.target.value)} className="mt-1 w-full p-2 border rounded" placeholder="id пользователя (если есть)" />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
