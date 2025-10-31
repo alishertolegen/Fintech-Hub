@@ -62,33 +62,41 @@ export default function CreateStartup(): JSX.Element {
       .filter(Boolean);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSuccessMsg(null);
+async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault();
+  setError(null);
+  setSuccessMsg(null);
 
-    if (!name.trim()) {
-      setError('Название стартапа обязательно.');
+  if (!name.trim()) {
+    setError('Название стартапа обязательно.');
+    return;
+  }
+
+  if (withMetric) {
+    if (metricMrr === '' || metricActiveUsers === '') {
+      setError('Поля MRR и Active Users обязательны для заполнения.');
       return;
     }
+  }
 
-    const attachments = parseAttachments(attachmentsText);
+  const attachments = parseAttachments(attachmentsText);
 
-    // build payload — НЕ даём пользователю вводить founderId вручную.
-    const payload: CreatePayload = {
-      name: name.trim(),
-      // include founderId automatically only if we have it from auth
-      ...(currentUserId ? { founderId: String(currentUserId) } : {}),
-      stage: stage || undefined,
-      industry: industry.trim() || undefined,
-      shortPitch: shortPitch.trim() || undefined,
-      description: description.trim() || undefined,
-      website: website.trim() || undefined,
-      logoUrl: logoUrl.trim() || undefined,
-      metricsSnapshot: { mrr: 0, users: 0 },
-      attachments,
-      visibility: visibility || 'public',
-    };
+  const payload: CreatePayload = {
+    name: name.trim(),
+    ...(currentUserId ? { founderId: String(currentUserId) } : {}),
+    stage: stage || undefined,
+    industry: industry.trim() || undefined,
+    shortPitch: shortPitch.trim() || undefined,
+    description: description.trim() || undefined,
+    website: website.trim() || undefined,
+    logoUrl: logoUrl.trim() || undefined,
+    metricsSnapshot: withMetric
+      ? { mrr: Number(metricMrr), users: Number(metricActiveUsers) }
+      : { mrr: 0, users: 0 },
+    attachments,
+    visibility: visibility || 'public',
+  };
+
 
     setLoading(true);
     try {
