@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { User, Mail, Phone, Building2, Calendar, Edit3, Save, X, Award, Briefcase, MapPin } from 'lucide-react';
+import React from 'react';
+import { User, Mail, Phone, Building2, Calendar, Award, Briefcase, MapPin } from 'lucide-react';
 
 export default function Profile() {
-  const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState({
+  const profile = {
     name: 'Асан Асанов',
     email: 'asan.asanov@aifc.kz',
     phone: '+7 (777) 123-45-67',
@@ -12,7 +11,7 @@ export default function Profile() {
     location: 'Астана, Қазақстан',
     joinDate: '15 Қаңтар 2024',
     bio: 'Финтех экожүйесін дамытуға және жаңа стартаптарды қолдауға бағытталған менеджер. 5 жылдық тәжірибе бар.',
-  });
+  };
 
   const stats = [
     { label: 'Жобалар', value: '12', icon: Briefcase },
@@ -20,55 +19,35 @@ export default function Profile() {
     { label: 'Бағалау', value: '4.8', icon: Award },
   ];
 
-  const handleSave = () => {
-    setIsEditing(false);
-    // Save logic here
-  };
-
   return (
     <div>
       <div>
         <div>
           <div>
             <div>
-              <div>
-                <User />
-              </div>
-              <div>
-                <h1>{profile.name}</h1>
-                <p>{profile.position}</p>
-                <p>
-                  <Building2 />
-                  {profile.company}
-                </p>
-              </div>
+              <User />
             </div>
-            <button onClick={() => setIsEditing(!isEditing)}>
-              {isEditing ? (
-                <>
-                  <X />
-                  Болдырмау
-                </>
-              ) : (
-                <>
-                  <Edit3 />
-                  Өңдеу
-                </>
-              )}
-            </button>
+            <div>
+              <h1>{profile.name}</h1>
+              <p>{profile.position}</p>
+              <p>
+                <Building2 />
+                {profile.company}
+              </p>
+            </div>
           </div>
+        </div>
 
-          <div>
-            {stats.map((stat, idx) => (
-              <div key={idx}>
-                <div>
-                  <stat.icon />
-                </div>
-                <p>{stat.value}</p>
-                <p>{stat.label}</p>
+        <div>
+          {stats.map((stat, idx) => (
+            <div key={idx}>
+              <div>
+                <stat.icon />
               </div>
-            ))}
-          </div>
+              <p>{stat.value}</p>
+              <p>{stat.label}</p>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -81,15 +60,7 @@ export default function Profile() {
               <Mail />
               Email
             </label>
-            {isEditing ? (
-              <input
-                type="email"
-                value={profile.email}
-                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-              />
-            ) : (
-              <p>{profile.email}</p>
-            )}
+            <p>{profile.email}</p>
           </div>
 
           <div>
@@ -97,15 +68,7 @@ export default function Profile() {
               <Phone />
               Телефон
             </label>
-            {isEditing ? (
-              <input
-                type="tel"
-                value={profile.phone}
-                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-              />
-            ) : (
-              <p>{profile.phone}</p>
-            )}
+            <p>{profile.phone}</p>
           </div>
 
           <div>
@@ -113,15 +76,7 @@ export default function Profile() {
               <MapPin />
               Орналасқан жері
             </label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={profile.location}
-                onChange={(e) => setProfile({ ...profile, location: e.target.value })}
-              />
-            ) : (
-              <p>{profile.location}</p>
-            )}
+            <p>{profile.location}</p>
           </div>
 
           <div>
@@ -135,25 +90,8 @@ export default function Profile() {
 
         <div>
           <label>Өзім туралы</label>
-          {isEditing ? (
-            <textarea
-              value={profile.bio}
-              onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-              rows={4}
-            />
-          ) : (
-            <p>{profile.bio}</p>
-          )}
+          <p>{profile.bio}</p>
         </div>
-
-        {isEditing && (
-          <div>
-            <button onClick={handleSave}>
-              <Save />
-              Сақтау
-            </button>
-          </div>
-        )}
       </div>
 
       <div>

@@ -14,6 +14,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (
@@ -32,18 +33,23 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const API = 'http://localhost:8080/api'; // при необходимости заменить на process.env.REACT_APP_API_URL
+const API = 'http://localhost:8080/api'; // при необходимости — заменить на process.env.REACT_APP_API_URL
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const raw = localStorage.getItem('user');
-    if (raw) {
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    if (storedToken) setToken(storedToken);
+    if (storedUser) {
       try {
-        setUser(JSON.parse(raw));
-      } catch { localStorage.removeItem('user'); }
+        setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem('user');
+      }
     }
     setLoading(false);
   }, []);
@@ -52,12 +58,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const text = await res.text();
     try {
       const json = JSON.parse(text);
-      if (!res.ok) throw new Error(json.message || JSON.stringify(json));
+      if (!res.ok) throw new Error(json.error || json.message || JSON.stringify(json));
       return json;
     } catch (e: any) {
       if (!res.ok) throw new Error(text || 'Сервер вернул ошибку');
       return text;
     }
+  };
+
+  const fetchUserProfile = async (jwt: string) => {
+    const res = await fetch(`${API}/users/me`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+    const data = await handleResponse(res);
+    const userObj: User = {
+      id: data.id,
+      email: data.email,
+      fullName: data.name ?? data.fullName,
+      company: data.company,
+      bio: data.bio,
+      avatarUrl: data.avatarUrl,
+      phone: data.meta?.phone ?? data.phone,
+      location: data.meta?.location ?? data.location,
+      role: data.role,
+    };
+    setUser(userObj);
+    localStorage.setItem('user', JSON.stringify(userObj));
   };
 
   const login = async (email: string, password: string) => {
@@ -66,23 +92,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const res = await fetch(`${API}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await handleResponse(res);
-      const userObj: User = {
-        id: data.id,
-        email: data.email,
-        fullName: data.name ?? data.fullName,
-        company: data.company,
-        bio: data.bio,
-        avatarUrl: data.avatarUrl,
-        phone: data.meta?.phone ?? data.phone,
-        location: data.meta?.location ?? data.location,
-        role: data.role
-      };
-      setUser(userObj);
-      localStorage.setItem('user', JSON.stringify(userObj));
+      const jwt = data.token;
+      if (!jwt) throw new Error('Token missing from response');
+
+      localStorage.setItem('token', jwt);
+      setToken(jwt);
+
+      // получаем профиль
+      await fetchUserProfile(jwt);
     } finally {
       setLoading(false);
     }
@@ -112,7 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const res = await fetch(`${API}/users/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       const data = await handleResponse(res);
@@ -125,7 +146,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         avatarUrl: data.avatarUrl,
         phone: data.meta?.phone ?? data.phone,
         location: data.meta?.location ?? data.location,
-        role: data.role
+        role: data.role,
       };
       setUser(userObj);
       localStorage.setItem('user', JSON.stringify(userObj));
@@ -136,18 +157,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
 };

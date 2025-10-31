@@ -51,13 +51,13 @@ export default function LoginPage() {
           />
         </div>
 
-        {error && <div role="alert">{error}</div>}
+        {error && <div role="alert" style={{ color: 'red' }}>{error}</div>}
 
         <div>
           <button type="submit" disabled={loading}>
             {loading ? 'Жүктелуде...' : 'Кіру'}
           </button>
-          <Link to="/register">Тіркелу</Link>
+          <Link to="/register" style={{ marginLeft: 10 }}>Тіркелу</Link>
         </div>
       </form>
     </div>
