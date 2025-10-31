@@ -5,6 +5,7 @@ import { ExternalLink, BarChart2, FileText, Globe } from 'lucide-react';
 
 const API = 'http://localhost:8080/api/startups';
 const METRICS_API = 'http://localhost:8080/api/startup-metrics';
+const USERS_API = 'http://localhost:8080/api/users';
 
 type MetricsSnapshot = { mrr?: number | null; users?: number | null };
 
@@ -36,6 +37,14 @@ type Startup = {
   createdAt?: string | number | Date;
   updatedAt?: string | number | Date;
   visibility?: string;
+};
+
+type User = {
+  id?: string;
+  _id?: string;
+  name?: string;
+  username?: string;
+  avatarUrl?: string;
 };
 
 function Logo({ name, url }: { name?: string; url?: string }) {
@@ -125,6 +134,11 @@ export default function StartupPage(): JSX.Element {
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [metricsError, setMetricsError] = useState<string | null>(null);
 
+  // Автор (founder)
+  const [founder, setFounder] = useState<User | null>(null);
+  const [founderLoading, setFounderLoading] = useState(false);
+  const [founderError, setFounderError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!slug) return;
     let canceled = false;
@@ -183,12 +197,12 @@ export default function StartupPage(): JSX.Element {
         const arr = Array.isArray(data) ? data : (Array.isArray((data as any).data) ? (data as any).data : []);
         // Нормализация: поле date, потом fallback на timestamp/createdAt
         const normalized = arr
-          .map((m: { date: any; }) => ({
+          .map((m: { date: any }) => ({
             ...m,
             date: m.date ?? (m as any).timestamp ?? (m as any).createdAt ?? null,
           }))
-          .filter((m: { date: null; }) => m.date != null)
-          .sort((a: { date: any; }, b: { date: any; }) => new Date(String(a.date)).getTime() - new Date(String(b.date)).getTime());
+          .filter((m: { date: null }) => m.date != null)
+          .sort((a: { date: any }, b: { date: any }) => new Date(String(a.date)).getTime() - new Date(String(b.date)).getTime());
         if (!canceled) setMetrics(normalized);
       } catch (e: any) {
         if (!canceled) setMetricsError(e.message ?? 'Не удалось загрузить метрики');
@@ -200,6 +214,42 @@ export default function StartupPage(): JSX.Element {
       canceled = true;
     };
   }, [startup]);
+
+  // Когда стартап загружен — запрашиваем автора
+  useEffect(() => {
+    const founderId = startup?.founderId;
+    if (!founderId) {
+      setFounder(null);
+      return;
+    }
+    let canceled = false;
+    (async () => {
+      setFounderLoading(true);
+      setFounderError(null);
+      try {
+        const res = await fetch(`${USERS_API}/${encodeURIComponent(String(founderId))}`, { credentials: 'include' });
+        if (res.status === 404) throw new Error('Автор не найден');
+        if (!res.ok) {
+          const txt = await res.text();
+          let msg = `Ошибка ${res.status}`;
+          try {
+            const json = JSON.parse(txt);
+            msg = json.error ?? json.message ?? msg;
+          } catch {}
+          throw new Error(msg);
+        }
+        const data = (await res.json()) as User;
+        if (!canceled) setFounder(data);
+      } catch (e: any) {
+        if (!canceled) setFounderError(e.message ?? 'Не удалось загрузить автора');
+      } finally {
+        if (!canceled) setFounderLoading(false);
+      }
+    })();
+    return () => {
+      canceled = true;
+    };
+  }, [startup?.founderId]);
 
   const idForApi = () => startup?.id ?? startup?._id ?? startup?.slug;
 
@@ -267,6 +317,39 @@ export default function StartupPage(): JSX.Element {
                 <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">{startup.industry}</span>
               </h1>
               {startup.shortPitch && <p className="mt-2 text-gray-600 dark:text-gray-400">{startup.shortPitch}</p>}
+
+              {/* Автор стартапа */}
+              {startup.founderId && (
+                <div className="mt-3">
+                  {founderLoading ? (
+                    <div className="text-sm text-gray-500">Загрузка автора...</div>
+                  ) : founderError ? (
+                    <div className="text-sm text-red-500">{founderError}</div>
+                  ) : founder ? (
+                    <button
+                      onClick={() => navigate(`/users/${encodeURIComponent(String(founder.id ?? founder._id ?? startup.founderId))}`)}
+                      className="inline-flex items-center gap-3 text-sm hover:underline"
+                      title={`Перейти в профиль ${founder.name ?? founder.username ?? ''}`}
+                    >
+                      {founder.avatarUrl ? (
+                        <img src={founder.avatarUrl} alt={founder.name} className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-medium text-xs">
+                          {(founder.name || founder.username || '')
+                            .split(' ')
+                            .map((p) => p[0])
+                            .slice(0, 2)
+                            .join('')
+                            .toUpperCase() || 'U'}
+                        </div>
+                      )}
+                      <span>{founder.name ?? founder.username ?? 'Профиль автора'}</span>
+                    </button>
+                  ) : (
+                    <div className="text-sm text-gray-500">Автор: {startup.founderId}</div>
+                  )}
+                </div>
+              )}
 
               <div className="mt-3 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
                 {startup.website && (() => {

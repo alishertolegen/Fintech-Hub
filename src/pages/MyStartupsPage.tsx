@@ -155,7 +155,7 @@ export default function MyStartupsPage(): JSX.Element {
           </div>
 
           <Link
-            to="/startups/new"
+            to="/startups/create"
             className="inline-flex items-center gap-2 py-2 px-3 rounded-md bg-indigo-600 text-white"
           >
             <Plus size={16} /> Создать стартап
