@@ -1,6 +1,7 @@
 // src/components/StartupsList.tsx
 import React, { useMemo, useState, useEffect, JSX } from 'react';
 import { Search, ExternalLink, BarChart2, Briefcase, Globe, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const API = 'http://localhost:8080/api/startups';
 // process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/startups` : 
@@ -241,12 +242,13 @@ export default function StartupsList(): JSX.Element {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <a
-                      href={`/startups/${s.slug}`}
+                    <Link
+                      to={`/startups/${s.id ?? s._id}`}
                       className="inline-flex items-center gap-2 py-1 px-3 border rounded-md text-sm"
                     >
                       <FileText size={14} /> Подробнее
-                    </a>
+                    </Link>
+
 
                     <a
                       href={s.website || '#'}

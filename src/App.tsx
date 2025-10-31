@@ -6,6 +6,7 @@ import StartupList from './components/StartupList';
 import Profile from './components/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import StartupPage from './pages/StartupPage.tsx';
 import { ProtectedRoute } from './auth/ProtectedRoute.tsx';
 
 function App() {
@@ -48,6 +49,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/startups/:slug" element={<StartupPage/>} />
+
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
