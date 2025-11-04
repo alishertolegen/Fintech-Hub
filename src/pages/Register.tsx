@@ -1,3 +1,4 @@
+// src/pages/RegisterPage.tsx
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -13,6 +14,16 @@ export default function RegisterPage() {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [role, setRole] = useState('founder');
   const [error, setError] = useState<string | null>(null);
+
+  // investor-specific
+  const [legalName, setLegalName] = useState('');
+  const [investorType, setInvestorType] = useState('angel'); // angel | vc | corporate
+  const [minCheck, setMinCheck] = useState<number | ''>('');
+  const [maxCheck, setMaxCheck] = useState<number | ''>('');
+  const [industries, setIndustries] = useState(''); // comma separated
+  const [stages, setStages] = useState(''); // comma separated
+  const [website, setWebsite] = useState('');
+
   const { register } = useAuth();
   const nav = useNavigate();
 
@@ -20,7 +31,20 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
     try {
-      await register(email, password, fullName, company, phone, location, bio, avatarUrl, role);
+      const investorProfile =
+        role === 'investor'
+          ? {
+              legalName: legalName || fullName,
+              type: investorType,
+              minCheck: minCheck === '' ? undefined : Number(minCheck),
+              maxCheck: maxCheck === '' ? undefined : Number(maxCheck),
+              preferredIndustries: industries ? industries.split(',').map(s => s.trim()) : [],
+              preferredStages: stages ? stages.split(',').map(s => s.trim()) : [],
+              website,
+            }
+          : undefined;
+
+      await register(email, password, fullName, company, phone, location, bio, avatarUrl, role, investorProfile);
       nav('/');
     } catch (err: any) {
       setError(err?.message || 'Тіркелу қатесі');
@@ -79,9 +103,55 @@ export default function RegisterPage() {
           </select>
         </div>
 
+        {/* investor-specific block */}
+        {role === 'investor' && (
+          <fieldset style={{ marginTop: 12 }}>
+            <legend>Инвестор профилі (міндетті емес, кейін профилде өзгертуге болады)</legend>
+
+            <div>
+              <label>Заңдық атауы (legal name)</label>
+              <input value={legalName} onChange={e => setLegalName(e.target.value)} />
+            </div>
+
+            <div>
+              <label>Тип</label>
+              <select value={investorType} onChange={e => setInvestorType(e.target.value)}>
+                <option value="angel">angel</option>
+                <option value="vc">vc</option>
+                <option value="corporate">corporate</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Минимальный чек (USD)</label>
+              <input value={minCheck} onChange={e => setMinCheck(e.target.value === '' ? '' : Number(e.target.value))} type="number" />
+            </div>
+
+            <div>
+              <label>Макс чек (USD)</label>
+              <input value={maxCheck} onChange={e => setMaxCheck(e.target.value === '' ? '' : Number(e.target.value))} type="number" />
+            </div>
+
+            <div>
+              <label>Индустрии (через запятую)</label>
+              <input value={industries} onChange={e => setIndustries(e.target.value)} placeholder="fintech, saas" />
+            </div>
+
+            <div>
+              <label>Стадии (через запятую)</label>
+              <input value={stages} onChange={e => setStages(e.target.value)} placeholder="pre-seed, seed" />
+            </div>
+
+            <div>
+              <label>Website</label>
+              <input value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://..." />
+            </div>
+          </fieldset>
+        )}
+
         {error && <div role="alert" style={{ color: 'red' }}>{error}</div>}
 
-        <div>
+        <div style={{ marginTop: 12 }}>
           <button type="submit">Тіркелу</button>
           <Link to="/login" style={{ marginLeft: 12 }}>Кіру</Link>
         </div>

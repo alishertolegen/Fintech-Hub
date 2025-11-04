@@ -1,3 +1,4 @@
+// src/auth/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface User {
@@ -17,6 +18,7 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  // Обновлено: добавлен последний необязательный параметр investorProfile
   register: (
     email: string,
     password: string,
@@ -26,14 +28,15 @@ interface AuthContextType {
     location?: string,
     bio?: string,
     avatarUrl?: string,
-    role?: string
+    role?: string,
+    investorProfile?: any
   ) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const API = 'http://localhost:8080/api'; // при необходимости — заменить на process.env.REACT_APP_API_URL
+const API = 'http://localhost:8080/api';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -102,11 +105,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('token', jwt);
       setToken(jwt);
 
-      // получаем профиль
       await fetchUserProfile(jwt);
     } finally {
       setLoading(false);
     }
+  };
+
+  const createInvestor = async (userId: string, investorProfile: any, jwt: string | null) => {
+    if (!jwt) throw new Error('No JWT for creating investor');
+    const body = { userId, ...investorProfile };
+    const res = await fetch(`${API}/investors`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+      body: JSON.stringify(body),
+    });
+    return await handleResponse(res);
   };
 
   const register = async (
@@ -118,7 +131,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     location?: string,
     bio?: string,
     avatarUrl?: string,
-    role?: string
+    role?: string,
+    investorProfile?: any
   ) => {
     setLoading(true);
     try {
@@ -137,6 +151,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       const data = await handleResponse(res);
+
+      // временно ставим user (если backend возвращает профиль)
       const userObj: User = {
         id: data.id,
         email: data.email,
@@ -150,6 +166,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
       setUser(userObj);
       localStorage.setItem('user', JSON.stringify(userObj));
+
+      // если роль инвестор — нужно создать investor документ.
+      if (role === 'investor') {
+        // делаем логин чтобы получить JWT (если register не возвращает токен)
+        await login(email, password);
+        const jwt = localStorage.getItem('token');
+        if (!jwt) throw new Error('Не удалось получить токен для создания профиля инвестора');
+
+        const profile = {
+          userId: userObj.id,
+          legalName: investorProfile?.legalName ?? userObj.fullName ?? '',
+          type: investorProfile?.type ?? 'angel',
+          minCheck: investorProfile?.minCheck ?? null,
+          maxCheck: investorProfile?.maxCheck ?? null,
+          preferredIndustries: investorProfile?.preferredIndustries ?? [],
+          preferredStages: investorProfile?.preferredStages ?? [],
+          description: investorProfile?.description ?? '',
+          website: investorProfile?.website ?? '',
+          isVerified: false
+        };
+
+        try {
+          await createInvestor(userObj.id!, profile, jwt);
+        } catch (e) {
+          console.error('Investor creation failed', e);
+          // не проставляем fatal: можно показывать уведомление в UI
+          // throw e; // если хотите, пробросьте ошибку
+        }
+      }
     } finally {
       setLoading(false);
     }
