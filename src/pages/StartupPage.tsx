@@ -2,22 +2,24 @@
 import React, { JSX, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ExternalLink, BarChart2, FileText, Globe } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext';
 
 const API = 'http://localhost:8080/api/startups';
 const METRICS_API = 'http://localhost:8080/api/startup-metrics';
 const USERS_API = 'http://localhost:8080/api/users';
+const OFFERS_API = 'http://localhost:8080/api/offers';
+const INVESTMENTS_API = 'http://localhost:8080/api/investments';
 
 type MetricsSnapshot = { mrr?: number | null; users?: number | null };
 
 type MetricRecord = {
   _id?: string;
   startupId?: string;
-  date?: string | number | Date; // ваша "date" (в примере — точка времени, например месяц)
+  date?: string | number | Date;
   mrr?: number | null;
   activeUsers?: number | null;
   burnRate?: number | null;
   other?: Record<string, any> | null;
-  // возможны дополнительные поля
 };
 
 type Startup = {
@@ -33,7 +35,7 @@ type Startup = {
   website?: string;
   logoUrl?: string;
   metricsSnapshot?: MetricsSnapshot;
-  attachments?: string[];
+  attachments?: string[] | Array<{ url?: string; name?: string }>;
   createdAt?: string | number | Date;
   updatedAt?: string | number | Date;
   visibility?: string;
@@ -45,6 +47,39 @@ type User = {
   name?: string;
   username?: string;
   avatarUrl?: string;
+  role?: string;
+};
+
+type Offer = {
+  id?: string;
+  _id?: string;
+  startupId?: string;
+  investorId?: string;
+  title?: string;
+  amount?: number;
+  equityPercent?: number;
+  type?: string;
+  visibility?: string;
+  status?: string;
+  attachments?: Array<{ url?: string; name?: string }>;
+  createdAt?: string | number | Date;
+  updatedAt?: string | number | Date;
+  note?: string;
+};
+
+type Investment = {
+  id?: string;
+  _id?: string;
+  startupId?: string;
+  investorId?: string;
+  amount?: number;
+  currency?: string;
+  equityPercent?: number;
+  valuationPostMoney?: number;
+  status?: string;
+  createdAt?: string | number | Date;
+  updatedAt?: string | number | Date;
+  note?: string;
 };
 
 function Logo({ name, url }: { name?: string; url?: string }) {
@@ -71,7 +106,7 @@ function formatDate(iso?: string | number | Date): string {
   }
 }
 
-/** Простой sparkline на SVG для массива чисел */
+/** Sparkline */
 function Sparkline({ data, width = 220, height = 48 }: { data: (number | null | undefined)[]; width?: number; height?: number }) {
   const vals = data.map((v) => (v == null ? null : Number(v)));
   const valid = vals.filter((v) => v != null) as number[];
@@ -94,8 +129,6 @@ function Sparkline({ data, width = 220, height = 48 }: { data: (number | null | 
   });
 
   const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' ');
-
-  // last valid point
   const lastValidIndex = [...vals].reverse().findIndex((v) => v != null);
   const lastIndex = lastValidIndex === -1 ? 0 : vals.length - 1 - lastValidIndex;
   const lastPoint = points[lastIndex];
@@ -108,14 +141,8 @@ function Sparkline({ data, width = 220, height = 48 }: { data: (number | null | 
           <stop offset="100%" stopColor="rgba(79,70,229,0.00)" />
         </linearGradient>
       </defs>
-
-      {/* fill */}
       <path d={`${pathD} L ${w - pad} ${h - pad} L ${pad} ${h - pad} Z`} fill="url(#grad)" stroke="none" />
-
-      {/* line */}
       <path d={pathD} fill="none" stroke="currentColor" strokeWidth={1.5} style={{ color: '#4f46e5' }} />
-
-      {/* last dot */}
       {lastPoint && <circle cx={lastPoint[0]} cy={lastPoint[1]} r={2.5} fill="#4f46e5" />}
     </svg>
   );
@@ -124,20 +151,43 @@ function Sparkline({ data, width = 220, height = 48 }: { data: (number | null | 
 export default function StartupPage(): JSX.Element {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const { user, token } = useAuth();
   const [startup, setStartup] = useState<Startup | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Метрики
+  // Metrics
   const [metrics, setMetrics] = useState<MetricRecord[] | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [metricsError, setMetricsError] = useState<string | null>(null);
 
-  // Автор (founder)
+  // Founder
   const [founder, setFounder] = useState<User | null>(null);
   const [founderLoading, setFounderLoading] = useState(false);
   const [founderError, setFounderError] = useState<string | null>(null);
+
+  // Offers & investments
+  const [offers, setOffers] = useState<Offer[] | null>(null);
+  const [offersLoading, setOffersLoading] = useState(false);
+  const [offersError, setOffersError] = useState<string | null>(null);
+
+  const [investments, setInvestments] = useState<Investment[] | null>(null);
+  const [investmentsLoading, setInvestmentsLoading] = useState(false);
+  const [investmentsError, setInvestmentsError] = useState<string | null>(null);
+
+  // Make offer form
+  const [makingOffer, setMakingOffer] = useState(false);
+  const [offerTitle, setOfferTitle] = useState('');
+  const [offerAmount, setOfferAmount] = useState<number | ''>('');
+  const [offerEquity, setOfferEquity] = useState<number | ''>('');
+  const [offerVisibility, setOfferVisibility] = useState<'private' | 'public'>('private');
+  const [offerSubmitting, setOfferSubmitting] = useState(false);
+
+  // Make investment (simple)
+  const [investAmount, setInvestAmount] = useState<number | ''>('');
+  const [investEquity, setInvestEquity] = useState<number | ''>('');
+  const [investSubmitting, setInvestSubmitting] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -172,7 +222,7 @@ export default function StartupPage(): JSX.Element {
     };
   }, [slug]);
 
-  // Когда стартап загружен — запрашиваем метрики
+  // metrics
   useEffect(() => {
     if (!startup) return;
     const id = startup.id ?? startup._id ?? startup.slug;
@@ -195,7 +245,6 @@ export default function StartupPage(): JSX.Element {
         }
         const data = (await res.json()) as MetricRecord[] | { data?: MetricRecord[] };
         const arr = Array.isArray(data) ? data : (Array.isArray((data as any).data) ? (data as any).data : []);
-        // Нормализация: поле date, потом fallback на timestamp/createdAt
         const normalized = arr
           .map((m: { date: any }) => ({
             ...m,
@@ -215,7 +264,7 @@ export default function StartupPage(): JSX.Element {
     };
   }, [startup]);
 
-  // Когда стартап загружен — запрашиваем автора
+  // founder
   useEffect(() => {
     const founderId = startup?.founderId;
     if (!founderId) {
@@ -251,6 +300,73 @@ export default function StartupPage(): JSX.Element {
     };
   }, [startup?.founderId]);
 
+  // offers
+  const loadOffers = async () => {
+    if (!startup) return;
+    const id = startup.id ?? startup._id ?? startup.slug;
+    if (!id) return;
+    setOffersLoading(true);
+    setOffersError(null);
+    try {
+      const res = await fetch(`${OFFERS_API}?startupId=${encodeURIComponent(String(id))}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        let msg = `Ошибка ${res.status}`;
+        try {
+          const json = JSON.parse(txt);
+          msg = json.error ?? json.message ?? msg;
+        } catch {}
+        throw new Error(msg);
+      }
+      const data = (await res.json()) as Offer[];
+      setOffers(Array.isArray(data) ? data : (data as any).data ?? []);
+    } catch (e: any) {
+      setOffersError(e.message ?? 'Не удалось загрузить офферы');
+    } finally {
+      setOffersLoading(false);
+    }
+  };
+
+  // investments
+  const loadInvestments = async () => {
+    if (!startup) return;
+    const id = startup.id ?? startup._id ?? startup.slug;
+    if (!id) return;
+    setInvestmentsLoading(true);
+    setInvestmentsError(null);
+    try {
+      // controller had: GET /api/investments/startup/{startupId}
+      const res = await fetch(`${INVESTMENTS_API}/startup/${encodeURIComponent(String(id))}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        let msg = `Ошибка ${res.status}`;
+        try {
+          const json = JSON.parse(txt);
+          msg = json.error ?? json.message ?? msg;
+        } catch {}
+        throw new Error(msg);
+      }
+      const data = (await res.json()) as Investment[];
+      setInvestments(Array.isArray(data) ? data : (data as any).data ?? []);
+    } catch (e: any) {
+      setInvestmentsError(e.message ?? 'Не удалось загрузить инвестиции');
+    } finally {
+      setInvestmentsLoading(false);
+    }
+  };
+
+  // load offers & investments when startup loaded
+  useEffect(() => {
+    if (!startup) return;
+    loadOffers();
+    loadInvestments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startup]);
+
   const idForApi = () => startup?.id ?? startup?._id ?? startup?.slug;
 
   async function handleDelete() {
@@ -285,7 +401,89 @@ export default function StartupPage(): JSX.Element {
     }
   }
 
-  // серии для sparkline (используем mrr и activeUsers)
+  // create offer (investor)
+  const submitOffer = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!startup || !user) {
+      alert('Нужна авторизация и стартап');
+      return;
+    }
+    if (!offerTitle || !offerAmount || !offerEquity) {
+      alert('Заполните заголовок, сумму и долю');
+      return;
+    }
+    setOfferSubmitting(true);
+    try {
+      const payload = {
+        startupId: idForApi(),
+        investorId: user.id,
+        title: offerTitle,
+        amount: Number(offerAmount),
+        equityPercent: Number(offerEquity),
+        type: 'term-sheet',
+        visibility: offerVisibility,
+        status: 'sent',
+        attachments: [],
+      };
+      const res = await fetch(OFFERS_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        let msg = `Ошибка ${res.status}`;
+        try {
+          const json = JSON.parse(txt);
+          msg = json.error ?? json.message ?? msg;
+        } catch {}
+        throw new Error(msg);
+      }
+      await loadOffers();
+      setMakingOffer(false);
+      setOfferTitle('');
+      setOfferAmount('');
+      setOfferEquity('');
+    } catch (e: any) {
+      alert('Не удалось создать offer: ' + (e.message ?? e));
+    } finally {
+      setOfferSubmitting(false);
+    }
+  };
+
+  // update offer status (founder)
+  const updateOfferStatus = async (offerId: string, status: string, note?: string) => {
+    if (!offerId) return;
+    try {
+      const res = await fetch(`${OFFERS_API}/${encodeURIComponent(offerId)}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ status, note }),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        let msg = `Ошибка ${res.status}`;
+        try {
+          const json = JSON.parse(txt);
+          msg = json.error ?? json.message ?? msg;
+        } catch {}
+        throw new Error(msg);
+      }
+      await loadOffers();
+      // optionally reload investments if accepted -> might create investment on backend
+      await loadInvestments();
+    } catch (e: any) {
+      alert('Не удалось обновить статус: ' + (e.message ?? e));
+    }
+  };
+  
+  // series for sparkline
   const mrrSeries = metrics?.map((m) => (m.mrr == null ? null : Number(m.mrr))) ?? [];
   const usersSeries = metrics?.map((m) => (m.activeUsers == null ? null : Number(m.activeUsers))) ?? [];
   const burnSeries = metrics?.map((m) => (m.burnRate == null ? null : Number(m.burnRate))) ?? [];
@@ -295,6 +493,9 @@ export default function StartupPage(): JSX.Element {
   const displayedUsers = lastMetric?.activeUsers ?? startup?.metricsSnapshot?.users ?? 0;
   const displayedBurn = lastMetric?.burnRate ?? null;
   const lastTimestamp = lastMetric?.date ?? startup?.updatedAt ?? startup?.createdAt ?? null;
+
+  const isFounder = user && startup && (user.id === startup.founderId || user.id === startup.id || user.id === startup._id);
+  const isInvestor = user && user.role === 'investor';
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -318,7 +519,7 @@ export default function StartupPage(): JSX.Element {
               </h1>
               {startup.shortPitch && <p className="mt-2 text-gray-600 dark:text-gray-400">{startup.shortPitch}</p>}
 
-              {/* Автор стартапа */}
+              {/* Founder block */}
               {startup.founderId && (
                 <div className="mt-3">
                   {founderLoading ? (
@@ -369,7 +570,7 @@ export default function StartupPage(): JSX.Element {
                 </div>
 
                 <div className="inline-flex items-center gap-2">
-                  <FileText size={16} /> Files: <strong>{startup.attachments?.length ?? 0}</strong>
+                  <FileText size={16} /> Files: <strong>{Array.isArray(startup.attachments) ? startup.attachments.length : 0}</strong>
                 </div>
               </div>
             </div>
@@ -387,10 +588,9 @@ export default function StartupPage(): JSX.Element {
             <p className="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-line">{startup.description ?? '—'}</p>
           </section>
 
-          {/* Метрики */}
+          {/* Метрики (без изменений) */}
           <section className="mt-6">
             <h3 className="text-lg font-medium">Метрики</h3>
-
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
               <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
                 <div className="flex items-baseline justify-between">
@@ -485,13 +685,14 @@ export default function StartupPage(): JSX.Element {
             </div>
           </section>
 
+          {/* Files */}
           <section className="mt-6">
             <h3 className="text-lg font-medium">Дополнительные файлы</h3>
-            {startup.attachments && startup.attachments.length > 0 ? (
+            {Array.isArray(startup.attachments) && startup.attachments.length > 0 ? (
               <ul className="mt-2 space-y-2">
-                {startup.attachments.map((a, i) => {
-                  const href = String(a);
-                  const name = href.split('/').pop() ?? `file-${i + 1}`;
+                {startup.attachments.map((a: any, i: number) => {
+                  const href = String(a?.url ?? a);
+                  const name = (a?.name as string) ?? href.split('/').pop() ?? `file-${i + 1}`;
                   return (
                     <li key={i} className="flex items-center justify-between gap-4">
                       <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm">
@@ -505,6 +706,110 @@ export default function StartupPage(): JSX.Element {
             ) : (
               <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">Файлы не добавлены</div>
             )}
+          </section>
+
+          {/* Offers & Investments */}
+          <section className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Офферы</h3>
+                {isInvestor && (
+                  <button onClick={() => setMakingOffer((v) => !v)} className="text-sm py-1 px-2 border rounded-md">
+                    {makingOffer ? 'Отмена' : 'Сделать offer'}
+                  </button>
+                )}
+              </div>
+
+              {makingOffer && isInvestor && (
+                <form onSubmit={submitOffer} className="mt-3 space-y-2">
+                  <input
+                    placeholder="Заголовок оффера"
+                    value={offerTitle}
+                    onChange={(e) => setOfferTitle(e.target.value)}
+                    className="w-full p-2 rounded-md bg-white dark:bg-zinc-900 border"
+                    required
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      placeholder="Сумма (USD)"
+                      type="number"
+                      value={offerAmount}
+                      onChange={(e) => setOfferAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-1/2 p-2 rounded-md bg-white dark:bg-zinc-900 border"
+                      required
+                    />
+                    <input
+                      placeholder="% доли"
+                      type="number"
+                      value={offerEquity}
+                      onChange={(e) => setOfferEquity(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-1/2 p-2 rounded-md bg-white dark:bg-zinc-900 border"
+                      required
+                    />
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <label className="text-sm">Видимость:</label>
+                    <select value={offerVisibility} onChange={(e) => setOfferVisibility(e.target.value as any)} className="p-1 rounded-md">
+                      <option value="private">private</option>
+                      <option value="public">public</option>
+                    </select>
+                    <button type="submit" disabled={offerSubmitting} className="ml-auto py-1 px-3 rounded-md bg-indigo-600 text-white text-sm">
+                      {offerSubmitting ? 'Отправка...' : 'Отправить'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              <div className="mt-4">
+                {offersLoading ? (
+                  <div className="text-sm text-gray-500">Загрузка офферов...</div>
+                ) : offersError ? (
+                  <div className="text-sm text-red-500">{offersError}</div>
+                ) : !offers || offers.length === 0 ? (
+                  <div className="text-sm text-gray-500">Офферов нет</div>
+                ) : (
+                  <ul className="space-y-3">
+                    {offers.map((o) => (
+                      <li key={o._id ?? o.id} className="p-3 bg-white dark:bg-zinc-900 rounded-md border">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="grow">
+                            <div className="text-sm text-gray-500">{o.type} • {o.visibility}</div>
+                            <div className="font-medium">{o.title}</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {o.amount ? `$${o.amount}` : '—'} • {o.equityPercent ?? '—'}%
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">{o.note}</div>
+                          </div>
+
+                          <div className="text-right text-sm">
+                            <div className="text-xs text-gray-400">{formatDate(o.createdAt)}</div>
+                            <div className="mt-2">
+                              <span className="inline-block py-1 px-2 text-xs rounded-md bg-zinc-100 dark:bg-zinc-800">{o.status}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* actions for founder */}
+                        {isFounder && (
+                          <div className="mt-3 flex gap-2">
+                            <button onClick={() => updateOfferStatus(String(o._id ?? o.id), 'accepted')} className="py-1 px-2 text-sm bg-green-50 dark:bg-green-900/20 rounded-md">
+                              Принять
+                            </button>
+                            <button onClick={() => updateOfferStatus(String(o._id ?? o.id), 'rejected')} className="py-1 px-2 text-sm bg-red-50 dark:bg-red-900/20 rounded-md">
+                              Отклонить
+                            </button>
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+
+
+
           </section>
 
           <section className="mt-6 flex items-center justify-between">

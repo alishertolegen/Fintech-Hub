@@ -11,8 +11,12 @@ export default function Navbar() {
         <Link to="/">Fintech Hub</Link>
         <nav>
           <Link to="/startups">Стартаптар</Link>
-          {user && <Link to="/my-startups">Мои стартапы</Link>}
+
+          {user?.role === 'founder' && <Link to="/my-startups">Мои стартапы</Link>}
+          {user?.role === 'investor' && <Link to="/my-investments">Мои инвестиции</Link>}
+
           <Link to="/profile">Профиль</Link>
+
           {user ? (
             <>
               <span>{user.fullName || user.email}</span>

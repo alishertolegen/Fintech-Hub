@@ -10,6 +10,7 @@ import StartupPage from './pages/StartupPage.tsx';
 import { ProtectedRoute } from './auth/ProtectedRoute.tsx';
 import MyStartupsPage from './pages/MyStartupsPage.tsx';
 import CreateStartup from './pages/CreateStartup.tsx';
+import MyInvestmentsPage from './pages/MyInvestmentsPage.tsx'; 
 
 function App() {
   const location = useLocation();
@@ -51,10 +52,20 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/startups/:slug" element={<StartupPage/>} />
+          <Route path="/startups/:slug" element={<StartupPage />} />
           <Route path="/my-startups" element={<MyStartupsPage />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          
+          <Route
+            path="/my-investments"
+            element={
+              <ProtectedRoute>
+                <MyInvestmentsPage />
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="/startups/create" element={<CreateStartup />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
     </div>
