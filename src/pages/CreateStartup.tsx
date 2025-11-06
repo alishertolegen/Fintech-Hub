@@ -15,7 +15,7 @@ type CreatePayload = {
   description?: string;
   website?: string;
   logoUrl?: string;
-  metricsSnapshot?: { mrr?: number; users?: number };
+  metricsSnapshot?: { mrr?: number; users?: number; valuationPreMoney?: number; valuationPostMoney?: number };
   attachments?: string[];
   visibility?: string;
 };
@@ -48,6 +48,7 @@ export default function CreateStartup(): JSX.Element {
   const [metricMrr, setMetricMrr] = useState<number | ''>('');
   const [metricActiveUsers, setMetricActiveUsers] = useState<number | ''>('');
   const [metricBurnRate, setMetricBurnRate] = useState<number | ''>('');
+  const [metricValuationPre, setMetricValuationPre] = useState<number | ''>('');
   const [metricOther, setMetricOther] = useState<string>('');
 
   const [loading, setLoading] = useState(false);
@@ -62,41 +63,44 @@ export default function CreateStartup(): JSX.Element {
       .filter(Boolean);
   }
 
-async function handleSubmit(e: React.FormEvent) {
-  e.preventDefault();
-  setError(null);
-  setSuccessMsg(null);
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
 
-  if (!name.trim()) {
-    setError('Название стартапа обязательно.');
-    return;
-  }
-
-  if (withMetric) {
-    if (metricMrr === '' || metricActiveUsers === '') {
-      setError('Поля MRR и Active Users обязательны для заполнения.');
+    if (!name.trim()) {
+      setError('Название стартапа обязательно.');
       return;
     }
-  }
 
-  const attachments = parseAttachments(attachmentsText);
+    if (withMetric) {
+      if (metricMrr === '' || metricActiveUsers === '' || metricValuationPre === '') {
+        setError('Поля MRR и Active Users обязательны для заполнения.');
+        return;
+      }
+    }
 
-  const payload: CreatePayload = {
-    name: name.trim(),
-    ...(currentUserId ? { founderId: String(currentUserId) } : {}),
-    stage: stage || undefined,
-    industry: industry.trim() || undefined,
-    shortPitch: shortPitch.trim() || undefined,
-    description: description.trim() || undefined,
-    website: website.trim() || undefined,
-    logoUrl: logoUrl.trim() || undefined,
-    metricsSnapshot: withMetric
-      ? { mrr: Number(metricMrr), users: Number(metricActiveUsers) }
-      : { mrr: 0, users: 0 },
-    attachments,
-    visibility: visibility || 'public',
-  };
+    const attachments = parseAttachments(attachmentsText);
 
+    const payload: CreatePayload = {
+      name: name.trim(),
+      ...(currentUserId ? { founderId: String(currentUserId) } : {}),
+      stage: stage || undefined,
+      industry: industry.trim() || undefined,
+      shortPitch: shortPitch.trim() || undefined,
+      description: description.trim() || undefined,
+      website: website.trim() || undefined,
+      logoUrl: logoUrl.trim() || undefined,
+      metricsSnapshot: withMetric
+        ? {
+            mrr: Number(metricMrr),
+            users: Number(metricActiveUsers),
+            ...(metricValuationPre === '' ? {} : { valuationPreMoney: Number(metricValuationPre) }),
+          }
+        : { mrr: 0, users: 0 },
+      attachments,
+      visibility: visibility || 'public',
+    };
 
     setLoading(true);
     try {
@@ -141,6 +145,7 @@ async function handleSubmit(e: React.FormEvent) {
           mrr: metricMrr === '' ? undefined : Number(metricMrr),
           activeUsers: metricActiveUsers === '' ? undefined : Number(metricActiveUsers),
           burnRate: metricBurnRate === '' ? undefined : Number(metricBurnRate),
+          valuationPreMoney: metricValuationPre === '' ? undefined : Number(metricValuationPre),
           other: parsedOther ?? undefined,
         };
 
@@ -286,15 +291,20 @@ async function handleSubmit(e: React.FormEvent) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="text-sm">Burn Rate</label>
                 <input type="number" value={metricBurnRate} onChange={(e) => setMetricBurnRate(e.target.value === '' ? '' : Number(e.target.value))} className="mt-1 p-2 w-full border rounded" />
               </div>
               <div>
-                <label className="text-sm">Other (JSON)</label>
-                <input value={metricOther} onChange={(e) => setMetricOther(e.target.value)} className="mt-1 p-2 w-full border rounded" placeholder='{"churn":2.3,"arpu":4.5}' />
+                <label className="text-sm">Valuation Pre (pre-money)</label>
+                <input type="number" value={metricValuationPre} onChange={(e) => setMetricValuationPre(e.target.value === '' ? '' : Number(e.target.value))} className="mt-1 p-2 w-full border rounded" placeholder="например 1500000" />
               </div>
+            </div>
+
+            <div>
+              <label className="text-sm">Other (JSON)</label>
+              <input value={metricOther} onChange={(e) => setMetricOther(e.target.value)} className="mt-1 p-2 w-full border rounded" placeholder='{"churn":2.3,"arpu":4.5}' />
             </div>
           </div>
         )}

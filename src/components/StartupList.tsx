@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 
 const API = 'http://localhost:8080/api/startups';
 // process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/startups` : 
-type MetricsSnapshot = { mrr?: number | null; users?: number | null };
+type MetricsSnapshot = { mrr?: number | null; users?: number | null; valuationPreMoney?: number | null };
 
 type Startup = {
   id?: string;
@@ -218,6 +218,7 @@ export default function StartupsList(): JSX.Element {
                   <div className="text-right text-sm text-gray-600 dark:text-gray-400">
                     <div>MRR: <strong>{s.metricsSnapshot?.mrr ?? 0}</strong></div>
                     <div>Users: <strong>{s.metricsSnapshot?.users ?? 0}</strong></div>
+                    <div>Valuation: <strong>{s.metricsSnapshot?.valuationPreMoney ?? 0}</strong></div>
                     <div className="mt-2 text-xs">{formatDate(s.createdAt)}</div>
                   </div>
                 </div>

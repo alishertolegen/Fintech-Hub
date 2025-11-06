@@ -47,7 +47,7 @@ export default function MyInvestmentsPage() {
               <td>{inv.id}</td>
               <td>{inv.startupId}</td>
               <td>{inv.amount}</td>
-              <td>{inv.currency}</td>
+              <td>$</td>
               <td>{inv.equityPercent}</td>
               <td>{inv.valuationPostMoney}</td>
               <td>{inv.status}</td>
