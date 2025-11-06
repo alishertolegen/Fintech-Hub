@@ -361,6 +361,80 @@
   width: 100%;
 }
 
+/* === НАЧАЛО: НОВЫЕ СТИЛИ ДЛЯ ДВУХ КОЛОНОК === */
+
+/* ДОКУМЕНТАЦИЯ:
+  Добавляем плавный переход для max-width. 
+  По умолчанию 600px.
+*/
+.register-card {
+  max-width: 600px;
+  transition: max-width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  /* ... остальные стили .register-card ... */
+}
+
+/* ДОКУМЕНТАЦИЯ:
+  Когда класс 'investor-layout' активен, 
+  карточка расширяется до 1000px.
+*/
+.register-card.investor-layout {
+  max-width: 1000px;
+}
+
+/* ДОКУМЕНТАЦИЯ:
+  Новый заголовок для секции "Профиль".
+  Похож на .investor-section-title, но без иконки.
+*/
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+/* ДОКУМЕНТАЦИЯ:
+  Это наша главная сетка для контента.
+  По умолчанию - 1 колонка.
+*/
+.form-content-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+/* ДОКУМЕНТАЦИЯ:
+  Когда форма имеет класс 'investor-layout', 
+  сетка переключается на 2 колонки.
+*/
+.register-form.investor-layout .form-content-split {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* ДОКУМЕНТАЦИЯ:
+  Контейнер для общих полей, чтобы они были 
+  логически сгруппированы в первой колонке.
+*/
+.common-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem; /* Тот же отступ, что и в .register-form */
+}
+
+/* ДОКУМЕНТАЦИЯ:
+  Убираем верхний отступ у .investor-section, 
+  когда он находится в сетке, чтобы он 
+  ровно стоял рядом с .common-fields.
+*/
+.register-form.investor-layout .investor-section {
+  margin-top: 0;
+}
+
+
+/* === КОНЕЦ: НОВЫЕ СТИЛИ ДЛЯ ДВУХ КОЛОНОК === */
+
 /* Адаптивность */
 @media (max-width: 768px) {
   .register-container {

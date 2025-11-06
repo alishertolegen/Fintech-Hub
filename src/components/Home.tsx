@@ -18,8 +18,6 @@ const Home: React.FC = () => {
             шешім қабылдаңыз.
           </p>
           <div className="hero-buttons">
-            <button className="btn-hero-primary">Стартапты тіркеу</button>
-            <button className="btn-hero-secondary">Инвестор ретінде қосылу</button>
           </div>
           <div className="hero-stats">
             <div className="stat-item">
@@ -113,7 +111,6 @@ const Home: React.FC = () => {
           <p className="cta-description">
             Fintech Hub қауымдастығына қосылып, өз мүмкіндіктеріңізді кеңейтіңіз
           </p>
-          <button className="btn-cta">Тегін бастау</button>
         </div>
       </section>
 

@@ -1,14 +1,15 @@
 import React, { JSX, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Image, PlusSquare, BarChart2 } from 'lucide-react';
-import { useAuth } from '../auth/AuthContext'; // <- используем контекст аутентификации
+import { Image, PlusSquare, BarChart2, Sparkles } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext';
+import './CreateStartup.css';
 
 const API = 'http://localhost:8080/api/startups';
 const METRICS_API = 'http://localhost:8080/api/startup-metrics';
 
 type CreatePayload = {
   name: string;
-  founderId?: string; // опционально — будет установлено автоматически из auth
+  founderId?: string;
   stage?: string;
   industry?: string;
   shortPitch?: string;
@@ -22,8 +23,7 @@ type CreatePayload = {
 
 export default function CreateStartup(): JSX.Element {
   const nav = useNavigate();
-  const { user } = useAuth() as any; // подстрой под вашу реализацию useAuth()
-  // получаем id пользователя из объекта user (поддерживаем несколько возможных полей)
+  const { user } = useAuth() as any;
   const currentUserId = user?.id ?? user?._id ?? user?.sub ?? undefined;
 
   const [name, setName] = useState('');
@@ -36,7 +36,6 @@ export default function CreateStartup(): JSX.Element {
   const [attachmentsText, setAttachmentsText] = useState('');
   const [visibility, setVisibility] = useState('public');
 
-  // initial metrics (optional)
   const [withMetric, setWithMetric] = useState(false);
   const [metricDate, setMetricDate] = useState<string>(() => {
     const d = new Date();
@@ -126,7 +125,6 @@ export default function CreateStartup(): JSX.Element {
       const created = await res.json();
       const createdId = (created && (created.id ?? created._id ?? created.slug)) || null;
 
-      // создание метрики (если включено)
       if (withMetric && createdId) {
         let parsedOther: Record<string, any> | undefined = undefined;
         if (metricOther && metricOther.trim()) {
@@ -188,134 +186,220 @@ export default function CreateStartup(): JSX.Element {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-semibold flex items-center gap-2">
-        <PlusSquare size={20} /> Создать стартап
-      </h1>
-
-      <form onSubmit={handleSubmit} className="mt-6 bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm space-y-4">
-        {error && <div className="text-sm text-red-600 p-2 rounded bg-red-50 dark:bg-red-900/20">{error}</div>}
-        {successMsg && <div className="text-sm text-green-700 p-2 rounded bg-green-50 dark:bg-green-900/20">{successMsg}</div>}
-
-        <div>
-          <label className="text-sm font-medium">Название</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full p-2 border rounded" placeholder="QazTech" />
+    <div className="create-startup-container">
+      <div className="create-startup-wrapper">
+        <div className="create-startup-header">
+          <h1 className="create-startup-title">
+            <PlusSquare size={28} />
+            Создать стартап
+            <Sparkles size={24} />
+          </h1>
+          <p className="create-startup-subtitle">Расскажите о своём проекте</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium">Стадия</label>
-            <select value={stage} onChange={(e) => setStage(e.target.value)} className="mt-1 w-full p-2 border rounded">
-              <option value="idea">idea</option>
-              <option value="pre-seed">pre-seed</option>
-              <option value="seed">seed</option>
-              <option value="series-a">series-a</option>
-              <option value="growth">growth</option>
-              <option value="mature">mature</option>
+        <form onSubmit={handleSubmit} className="create-startup-form">
+          {error && <div className="alert-message alert-error">{error}</div>}
+          {successMsg && <div className="alert-message alert-success">{successMsg}</div>}
+
+          <div className="form-group">
+            <label className="form-label">Название</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="form-input"
+              placeholder="QazTech"
+            />
+          </div>
+
+          <div className="form-grid">
+            <div className="form-group">
+              <label className="form-label">Стадия</label>
+              <select value={stage} onChange={(e) => setStage(e.target.value)} className="form-select">
+                <option value="idea">Идея</option>
+                <option value="pre-seed">Pre-seed</option>
+                <option value="seed">Seed</option>
+                <option value="series-a">Series A</option>
+                <option value="growth">Growth</option>
+                <option value="mature">Mature</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Отрасль</label>
+              <input
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                className="form-input"
+                placeholder="Fintech"
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Краткий питч</label>
+            <input
+              value={shortPitch}
+              onChange={(e) => setShortPitch(e.target.value)}
+              className="form-input"
+              placeholder="Платформа для умных инвестиций"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Описание</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="form-textarea"
+              placeholder="Инновационное решение..."
+            />
+          </div>
+
+          <div className="form-grid">
+            <div className="form-group">
+              <label className="form-label">Веб-сайт</label>
+              <input
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                className="form-input"
+                placeholder="https://qaztech.kz"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Logo URL</label>
+              <div className="logo-preview-wrapper">
+                <input
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  className="form-input logo-preview-input"
+                  placeholder="https://..."
+                />
+                <button type="button" className="btn-clear-logo" onClick={() => setLogoUrl('')}>
+                  <Image size={16} /> Очистить
+                </button>
+              </div>
+              {logoUrl && (
+                <div className="logo-preview">
+                  <img src={logoUrl} alt="logo preview" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Вложения (URL, через новую строку или запятую)</label>
+            <textarea
+              value={attachmentsText}
+              onChange={(e) => setAttachmentsText(e.target.value)}
+              className="form-textarea"
+              style={{ minHeight: '80px' }}
+              placeholder="https://...&#10;https://..."
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Видимость</label>
+            <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className="form-select" style={{ width: '200px' }}>
+              <option value="public">Публичный</option>
+              <option value="private">Приватный</option>
             </select>
           </div>
 
-          <div>
-            <label className="text-sm font-medium">Отрасль</label>
-            <input value={industry} onChange={(e) => setIndustry(e.target.value)} className="mt-1 w-full p-2 border rounded" placeholder="Fintech" />
-          </div>
-        </div>
+          <hr className="form-divider" />
 
-        <div>
-          <label className="text-sm font-medium">Краткий питч</label>
-          <input value={shortPitch} onChange={(e) => setShortPitch(e.target.value)} className="mt-1 w-full p-2 border rounded" placeholder="Платформа для умных инвестиций" />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium">Описание</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full p-2 border rounded" rows={5} placeholder="Инновационное решение..." />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium">Сайт</label>
-            <input value={website} onChange={(e) => setWebsite(e.target.value)} className="mt-1 w-full p-2 border rounded" placeholder="https://qaztech.kz" />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Logo URL</label>
-            <div className="mt-1 flex gap-2">
-              <input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} className="flex-1 p-2 border rounded" placeholder="https://..." />
-              <button type="button" className="inline-flex items-center gap-2 px-3 rounded border" onClick={() => setLogoUrl('')}>
-                <Image size={16} /> Очистить
-              </button>
-            </div>
-            {logoUrl && (
-              <div className="mt-2">
-                <img src={logoUrl} alt="logo preview" className="w-24 h-24 rounded-md object-cover border" />
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium">Attachments (URL, через новую строку или запятую)</label>
-          <textarea value={attachmentsText} onChange={(e) => setAttachmentsText(e.target.value)} className="mt-1 w-full p-2 border rounded" rows={2} placeholder="https://...{enter}https://..." />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium">Видимость</label>
-          <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className="mt-1 w-40 p-2 border rounded">
-            <option value="public">public</option>
-            <option value="private">private</option>
-          </select>
-        </div>
-
-        <hr className="my-2" />
-
-        <div className="flex items-center gap-3">
-          <input id="withMetric" type="checkbox" checked={withMetric} onChange={(e) => setWithMetric(e.target.checked)} />
-          <label htmlFor="withMetric" className="text-sm">Добавить начальную метрику</label>
-          <div className="text-xs text-gray-500 flex items-center gap-2"><BarChart2 size={14} /> опционально</div>
-        </div>
-
-        {withMetric && (
-          <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-sm">Дата</label>
-                <input type="date" value={metricDate} onChange={(e) => setMetricDate(e.target.value)} className="mt-1 p-2 w-full border rounded" />
-              </div>
-              <div>
-                <label className="text-sm">MRR</label>
-                <input type="number" value={metricMrr} onChange={(e) => setMetricMrr(e.target.value === '' ? '' : Number(e.target.value))} className="mt-1 p-2 w-full border rounded" />
-              </div>
-              <div>
-                <label className="text-sm">Active Users</label>
-                <input type="number" value={metricActiveUsers} onChange={(e) => setMetricActiveUsers(e.target.value === '' ? '' : Number(e.target.value))} className="mt-1 p-2 w-full border rounded" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-sm">Burn Rate</label>
-                <input type="number" value={metricBurnRate} onChange={(e) => setMetricBurnRate(e.target.value === '' ? '' : Number(e.target.value))} className="mt-1 p-2 w-full border rounded" />
-              </div>
-              <div>
-                <label className="text-sm">Valuation Pre (pre-money)</label>
-                <input type="number" value={metricValuationPre} onChange={(e) => setMetricValuationPre(e.target.value === '' ? '' : Number(e.target.value))} className="mt-1 p-2 w-full border rounded" placeholder="например 1500000" />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm">Other (JSON)</label>
-              <input value={metricOther} onChange={(e) => setMetricOther(e.target.value)} className="mt-1 p-2 w-full border rounded" placeholder='{"churn":2.3,"arpu":4.5}' />
+          <div className="checkbox-group">
+            <input
+              id="withMetric"
+              type="checkbox"
+              checked={withMetric}
+              onChange={(e) => setWithMetric(e.target.checked)}
+              className="checkbox-input"
+            />
+            <label htmlFor="withMetric" className="checkbox-label">
+              Добавить начальную метрику
+            </label>
+            <div className="checkbox-hint">
+              <BarChart2 size={16} /> опционально
             </div>
           </div>
-        )}
 
-        <div className="flex gap-2 justify-end">
-          <button type="button" onClick={() => nav('/startups')} className="py-2 px-4 border rounded">Отмена</button>
-          <button type="submit" disabled={loading} className="py-2 px-4 rounded bg-indigo-600 text-white">
-            {loading ? 'Создание...' : 'Создать стартап'}
-          </button>
-        </div>
-      </form>
+          {withMetric && (
+            <div className="metrics-section">
+              <div className="metrics-grid">
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Дата</label>
+                  <input
+                    type="date"
+                    value={metricDate}
+                    onChange={(e) => setMetricDate(e.target.value)}
+                    className="form-input"
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">MRR</label>
+                  <input
+                    type="number"
+                    value={metricMrr}
+                    onChange={(e) => setMetricMrr(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="form-input"
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Active Users</label>
+                  <input
+                    type="number"
+                    value={metricActiveUsers}
+                    onChange={(e) => setMetricActiveUsers(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="form-input"
+                  />
+                </div>
+              </div>
+
+              <div className="metrics-grid">
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Burn Rate</label>
+                  <input
+                    type="number"
+                    value={metricBurnRate}
+                    onChange={(e) => setMetricBurnRate(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="form-input"
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Valuation Pre</label>
+                  <input
+                    type="number"
+                    value={metricValuationPre}
+                    onChange={(e) => setMetricValuationPre(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="form-input"
+                    placeholder="например 1500000"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0, marginTop: '16px' }}>
+                <label className="form-label">Other (JSON)</label>
+                <input
+                  value={metricOther}
+                  onChange={(e) => setMetricOther(e.target.value)}
+                  className="form-input"
+                  placeholder='{"churn":2.3,"arpu":4.5}'
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="form-actions">
+            <button type="button" onClick={() => nav('/startups')} className="btn btn-cancel">
+              Отмена
+            </button>
+            <button type="submit" disabled={loading} className="btn btn-submit">
+              {loading ? 'Создание...' : 'Создать стартап'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
