@@ -28,33 +28,82 @@ export default function RegisterPage() {
   const { register } = useAuth();
   const nav = useNavigate();
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+const submit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError(null);
+  setLoading(true);
 
-    try {
-      const investorProfile =
-        role === 'investor'
-          ? {
-              legalName: legalName || fullName,
-              type: investorType,
-              minCheck: minCheck === '' ? undefined : Number(minCheck),
-              maxCheck: maxCheck === '' ? undefined : Number(maxCheck),
-              preferredIndustries: industries ? industries.split(',').map(s => s.trim()) : [],
-              preferredStages: stages ? stages.split(',').map(s => s.trim()) : [],
-              website,
-            }
-          : undefined;
+  try {
+    const investorProfile =
+      role === 'investor'
+        ? {
+            legalName: legalName || fullName,
+            type: investorType,
+            minCheck: minCheck === '' ? undefined : Number(minCheck),
+            maxCheck: maxCheck === '' ? undefined : Number(maxCheck),
+            preferredIndustries: industries ? industries.split(',').map(s => s.trim()) : [],
+            preferredStages: stages ? stages.split(',').map(s => s.trim()) : [],
+            website,
+          }
+        : undefined;
 
-      await register(email, password, fullName, company, phone, location, bio, avatarUrl, role, investorProfile);
-      nav('/');
-    } catch (err: any) {
-      setError(err?.message || 'Тіркелу қатесі');
-    } finally {
-      setLoading(false);
+    await register(email, password, fullName, company, phone, location, bio, avatarUrl, role, investorProfile);
+    nav('/');
+  } catch (err: any) {
+    console.error('Register error:', err);
+
+    let userMessage: string | null = null;
+    const resp = err?.response;
+
+    if (resp && resp.data) {
+      const data = resp.data;
+      if (typeof data.message === 'string' && data.message.trim()) {
+        userMessage = data.message;
+      } else if (typeof data.error === 'string' && data.error.trim()) {
+        userMessage = data.error;
+      } else if (data.code) {
+        switch (data.code) {
+          case 'EMAIL_EXISTS':
+            userMessage = 'Бұл email бұрыннан тіркелген.';
+            break;
+          case 'INVALID_EMAIL':
+            userMessage = 'Электрондық пошта форматы дұрыс емес.';
+            break;
+          case 'WEAK_PASSWORD':
+            userMessage = 'Құпия сөз тым әлсіз (кемінде 8 таңба).';
+            break;
+          case 'BAD_REQUEST':
+            userMessage = 'Қате сұраныс. Барлық міндетті өрістерді толтырыңыз.';
+            break;
+          case 'SERVER_ERROR':
+            userMessage = 'Серверде қате. Кейінірек қайталап көріңіз.';
+            break;
+          default:
+            userMessage = data.code || 'Тіркелу қатесі';
+        }
+      } else {
+        const status = resp.status;
+        if (status === 400) userMessage = 'Қате сұраныс. Деректерді тексеріңіз.';
+        else if (status === 401) userMessage = 'Рұқсат беру қатесі.';
+        else if (status === 409) userMessage = 'Бұл email бұрыннан тіркелген.';
+        else if (status >= 500) userMessage = 'Сервер ішінде қате. Кейінірек қайталап көріңіз.';
+        else userMessage = 'Белгісіз қате орын алды.';
+      }
+    } else if (err?.message) {
+      if (err.message.toLowerCase().includes('network')) {
+        userMessage = 'Желіге қосылу мүмкін емес. Интернет байланысын тексеріңіз.';
+      } else {
+        userMessage = err.message;
+      }
+    } else {
+      userMessage = 'Тіркелу қатесі';
     }
-  };
+
+    setError(userMessage);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="register-container">
