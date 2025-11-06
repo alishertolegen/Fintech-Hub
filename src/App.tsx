@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import Dashboard from './components/Dashboard';
+import Home from './components/Home';
 import StartupList from './components/StartupList';
 import Profile from './components/Profile';
 import Login from './pages/Login';
@@ -38,7 +38,7 @@ function App() {
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <Home />
                 </ProtectedRoute>
               }
             />

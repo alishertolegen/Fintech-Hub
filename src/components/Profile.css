@@ -1,242 +1,259 @@
-/* ================= Profile.css ================= */
+/* src/components/Profile.css */
 
-:root {
-  --accent-grad: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --card-bg: rgba(255,255,255,0.95);
-  --glass-bg: rgba(255,255,255,0.06);
-  --muted: #6b7280;
-  --shadow: 0 10px 30px rgba(20,20,40,0.12);
+/* Общая обертка страницы */
+.profile-page {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
+  color: #333;
 }
 
-/* page root with gradient backdrop */
-.profile-root {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  background: var(--accent-grad);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-}
-
-/* central card */
-.profile-container {
-  width: 100%;
-  max-width: 980px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.78));
+/* Карточка профиля */
+.profile-card {
+  background: #ffffff;
   border-radius: 16px;
-  padding: 28px;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(6px) saturate(120%);
-  border: 1px solid rgba(255,255,255,0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
+  overflow: hidden; /* Важно для градиентной шапки */
 }
 
-/* header */
+/* Градиентная шапка профиля */
 .profile-header {
   display: flex;
-  gap: 20px;
   align-items: center;
+  gap: 24px;
+  padding: 24px;
+  /* Запрошенный градиент */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
 }
 
 .profile-avatar {
-  flex: 0 0 auto;
-}
-
-.avatar-img {
-  width: 96px;
-  height: 96px;
-  object-fit: cover;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  border: 4px solid rgba(255,255,255,0.85);
-  box-shadow: 0 6px 18px rgba(30,30,60,0.12);
+  object-fit: cover;
+  border: 3px solid rgba(255, 255, 255, 0.8);
+  flex-shrink: 0;
 }
 
+/* Стили для аватара с инициалами (из InitialsAvatar) */
 .initials-avatar {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.9);
-  color: #2b2b2b;
+  border-radius: 50%;
   font-weight: 600;
-  box-shadow: 0 6px 18px rgba(30,30,60,0.12);
-  border: 4px solid rgba(255,255,255,0.85);
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 3px solid rgba(255, 255, 255, 0.8);
+  flex-shrink: 0;
 }
 
-.profile-main {
-  flex: 1 1 auto;
+.profile-header-info {
+  flex-grow: 1;
 }
 
-.name-row {
+.profile-header-top {
   display: flex;
-  gap: 12px;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .profile-name {
-  margin: 0;
-  font-size: 22px;
+  font-size: 1.75rem;
   font-weight: 700;
-  color: #0f172a;
+  margin: 0;
 }
 
-.role-badge {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: var(--accent-grad);
-  color: white;
+.profile-role-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8rem;
   font-weight: 600;
-  font-size: 12px;
-  box-shadow: 0 6px 18px rgba(118,75,162,0.18);
+  padding: 4px 10px;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  text-transform: capitalize;
 }
 
 .profile-company {
-  margin: 8px 0 0 0;
-  color: var(--muted);
-  font-size: 14px;
+  font-size: 1rem;
+  margin-top: 4px;
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.profile-bio {
-  margin: 12px 0 0 0;
-  color: #1f2937;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-/* info grid */
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-top: 20px;
-}
-
-.info-item {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 12px;
-  border-radius: 10px;
-  background: rgba(11, 20, 44, 0.02);
-}
-
-.info-icon {
-  min-width: 20px;
+  gap: 6px;
   opacity: 0.9;
 }
 
-.info-label {
-  font-size: 12px;
-  color: var(--muted);
+.profile-bio {
+  font-size: 0.9rem;
+  margin-top: 12px;
+  opacity: 0.8;
+  font-style: italic;
 }
 
-.info-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
+/* Тело карточки (белая часть) */
+.profile-body {
+  padding: 24px;
 }
 
-/* sections */
-.section {
-  margin-top: 20px;
+/* Сетка контактной информации */
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 24px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.contact-item-icon {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: #764ba2; /* Цвет из градиента */
+}
+
+.contact-label {
+  font-size: 0.8rem;
+  color: #777;
+  text-transform: uppercase;
+}
+
+.contact-value {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #333;
+  word-break: break-all;
+}
+
+/* Профиль инвестора и другие секции */
+.profile-section {
+  margin-top: 24px;
 }
 
 .section-title {
-  margin: 0 0 8px 0;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.section-body {
-  margin: 0;
-  font-size: 14px;
-  color: #0f172a;
-}
-
-/* investor block */
-.investor-block {
-  margin-top: 10px;
-  padding: 14px;
-  border-radius: 12px;
-  background: rgba(250,250,255,0.6);
-  border: 1px solid rgba(118,75,162,0.06);
-}
-
-.investor-title {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  color: #0f172a;
-}
-
-.investor-view div {
-  margin: 6px 0;
-}
-
-.muted {
-  color: var(--muted);
-  margin-left: 8px;
+  font-size: 1.1rem;
   font-weight: 600;
+  color: #555;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
 }
 
-.small {
-  font-size: 13px;
+/* Режим просмотра профиля инвестора */
+.investor-view div {
+  margin-bottom: 8px;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+.investor-view strong {
+  font-weight: 600;
+  color: #333;
+  margin-right: 8px;
+}
+.investor-view .description-label {
+  display: block;
+  margin-bottom: 4px;
+}
+.investor-view .description-text {
+  color: #555;
+  padding-left: 4px;
 }
 
-.controls {
-  margin-top: 12px;
+/* Форма редактирования */
+.investor-form {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 12px;
 }
 
-/* form elements */
-.input, .textarea {
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+.form-row > * {
+  flex: 1;
+}
+
+.form-input,
+.form-textarea {
   width: 100%;
   padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(15,23,42,0.06);
-  background: white;
-  box-shadow: 0 2px 8px rgba(20,20,40,0.03) inset;
-  font-size: 14px;
-  margin-top: 8px;
+  font-size: 0.95rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box; /* Важно для .form-row */
+  transition: border-color 0.2s;
+}
+.form-input:focus,
+.form-textarea:focus {
+  border-color: #667eea;
+  outline: none;
+}
+.form-textarea {
+  min-height: 80px;
+  resize: vertical;
 }
 
-.textarea { min-height: 100px; resize: vertical; }
-
-.row {
-  display: flex;
-  gap: 10px;
-}
-
-.btn {
-  padding: 8px 14px;
-  border-radius: 10px;
+/* Стили кнопок */
+.button {
+  padding: 10px 16px;
+  font-size: 0.9rem;
   font-weight: 600;
   border: none;
+  border-radius: 6px;
   cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.btn-primary {
-  background: var(--accent-grad);
+.button-primary {
+  background-color: #667eea;
   color: white;
-  box-shadow: 0 8px 24px rgba(102,126,234,0.18);
+}
+.button-primary:hover:not(:disabled) {
+  background-color: #5a6edc;
 }
 
-.btn-muted {
-  background: #eef2ff;
-  color: #111827;
+.button-success {
+  background-color: #28a745;
+  color: white;
+}
+.button-success:hover:not(:disabled) {
+  background-color: #218838;
 }
 
-.extra-list { list-style: none; padding: 0; margin: 12px 0 0 0; }
-.extra-item { display:flex; gap:8px; align-items:center; margin:6px 0; color:#0f172a; }
+.button-secondary {
+  background-color: #f0f0f0;
+  color: #333;
+}
+.button-secondary:hover:not(:disabled) {
+  background-color: #e0e0e0;
+}
 
-/* responsive */
-@media (max-width: 720px) {
-  .info-grid { grid-template-columns: 1fr; }
-  .profile-header { flex-direction: column; align-items: flex-start; }
-  .name-row { align-items: flex-start; }
-  .profile-container { padding: 20px; }
+/* Состояния загрузки, ошибок */
+.loading-state,
+.error-state,
+.unauth-state {
+  padding: 40px;
+  text-align: center;
+  font-size: 1.1rem;
+  color: #555;
+}
+.error-state {
+  color: #d9534f;
+  font-weight: 500;
 }
