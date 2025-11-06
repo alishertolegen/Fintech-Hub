@@ -1,7 +1,7 @@
-// src/pages/RegisterPage.tsx
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import './Register.css';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -14,14 +14,15 @@ export default function RegisterPage() {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [role, setRole] = useState('founder');
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   // investor-specific
   const [legalName, setLegalName] = useState('');
-  const [investorType, setInvestorType] = useState('angel'); // angel | vc | corporate
+  const [investorType, setInvestorType] = useState('angel');
   const [minCheck, setMinCheck] = useState<number | ''>('');
   const [maxCheck, setMaxCheck] = useState<number | ''>('');
-  const [industries, setIndustries] = useState(''); // comma separated
-  const [stages, setStages] = useState(''); // comma separated
+  const [industries, setIndustries] = useState('');
+  const [stages, setStages] = useState('');
   const [website, setWebsite] = useState('');
 
   const { register } = useAuth();
@@ -30,6 +31,8 @@ export default function RegisterPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setLoading(true);
+
     try {
       const investorProfile =
         role === 'investor'
@@ -48,114 +51,247 @@ export default function RegisterPage() {
       nav('/');
     } catch (err: any) {
       setError(err?.message || 'Тіркелу қатесі');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div>
-      <h2>Тіркелу</h2>
-      <form onSubmit={submit}>
-        <div>
-          <label>Аты-жөні</label>
-          <input value={fullName} onChange={e => setFullName(e.target.value)} required />
+    <div className="register-container">
+      <div className="register-card">
+        <div className="register-header">
+          <h2 className="register-title">Тіркелу</h2>
+          <p className="register-subtitle">Жаңа аккаунт жасаңыз</p>
         </div>
 
-        <div>
-          <label>Email</label>
-          <input value={email} onChange={e => setEmail(e.target.value)} type="email" required />
-        </div>
-
-        <div>
-          <label>Құпия сөз</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
-        </div>
-
-        <div>
-          <label>Компания (міндетті емес)</label>
-          <input value={company} onChange={e => setCompany(e.target.value)} />
-        </div>
-
-        <div>
-          <label>Телефон (міндетті емес)</label>
-          <input value={phone} onChange={e => setPhone(e.target.value)} />
-        </div>
-
-        <div>
-          <label>Орналасқан жер (міндетті емес)</label>
-          <input value={location} onChange={e => setLocation(e.target.value)} />
-        </div>
-
-        <div>
-          <label>Био (міндетті емес)</label>
-          <textarea value={bio} onChange={e => setBio(e.target.value)} />
-        </div>
-
-        <div>
-          <label>Avatar URL (міндетті емес)</label>
-          <input value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} placeholder="https://..." />
-        </div>
-
-        <div>
-          <label>Рөлі</label>
-          <select value={role} onChange={e => setRole(e.target.value)}>
-            <option value="founder">founder</option>
-            <option value="investor">investor</option>
-          </select>
-        </div>
-
-        {/* investor-specific block */}
-        {role === 'investor' && (
-          <fieldset style={{ marginTop: 12 }}>
-            <legend>Инвестор профилі (міндетті емес, кейін профилде өзгертуге болады)</legend>
-
-            <div>
-              <label>Заңдық атауы (legal name)</label>
-              <input value={legalName} onChange={e => setLegalName(e.target.value)} />
+        <form onSubmit={submit} className="register-form">
+          {/* Основная информация */}
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Аты-жөні</label>
+              <input
+                className="form-input"
+                value={fullName}
+                onChange={e => setFullName(e.target.value)}
+                required
+                placeholder="Іван Іванов"
+              />
             </div>
 
-            <div>
-              <label>Тип</label>
-              <select value={investorType} onChange={e => setInvestorType(e.target.value)}>
-                <option value="angel">angel</option>
-                <option value="vc">vc</option>
-                <option value="corporate">corporate</option>
-              </select>
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <input
+                className="form-input"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                type="email"
+                required
+                placeholder="you@example.com"
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Құпия сөз</label>
+            <input
+              className="form-input"
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              placeholder="••••••••"
+            />
+          </div>
+
+          {/* Дополнительная информация */}
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label optional">Компания</label>
+              <input
+                className="form-input"
+                value={company}
+                onChange={e => setCompany(e.target.value)}
+                placeholder="Компания атауы"
+              />
             </div>
 
-            <div>
-              <label>Минимальный чек (USD)</label>
-              <input value={minCheck} onChange={e => setMinCheck(e.target.value === '' ? '' : Number(e.target.value))} type="number" />
+            <div className="form-group">
+              <label className="form-label optional">Телефон</label>
+              <input
+                className="form-input"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="+7 (___) ___-__-__"
+              />
             </div>
+          </div>
 
-            <div>
-              <label>Макс чек (USD)</label>
-              <input value={maxCheck} onChange={e => setMaxCheck(e.target.value === '' ? '' : Number(e.target.value))} type="number" />
+          <div className="form-group">
+            <label className="form-label optional">Орналасқан жер</label>
+            <input
+              className="form-input"
+              value={location}
+              onChange={e => setLocation(e.target.value)}
+              placeholder="Алматы, Қазақстан"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label optional">Био</label>
+            <textarea
+              className="form-textarea"
+              value={bio}
+              onChange={e => setBio(e.target.value)}
+              placeholder="Өзіңіз туралы қысқаша..."
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label optional">Avatar URL</label>
+            <input
+              className="form-input"
+              value={avatarUrl}
+              onChange={e => setAvatarUrl(e.target.value)}
+              placeholder="https://..."
+            />
+          </div>
+
+          {/* Выбор роли */}
+          <div className="form-group">
+            <label className="form-label">Рөлі</label>
+            <div className="role-selector">
+              <label className={`role-option ${role === 'founder' ? 'active' : ''}`}>
+                <input
+                  type="radio"
+                  value="founder"
+                  checked={role === 'founder'}
+                  onChange={e => setRole(e.target.value)}
+                />
+                <span className="role-label">Founder</span>
+                <span className="role-description">Стартап негізін қалаушы</span>
+              </label>
+
+              <label className={`role-option ${role === 'investor' ? 'active' : ''}`}>
+                <input
+                  type="radio"
+                  value="investor"
+                  checked={role === 'investor'}
+                  onChange={e => setRole(e.target.value)}
+                />
+                <span className="role-label">Investor</span>
+                <span className="role-description">Инвестор</span>
+              </label>
             </div>
+          </div>
 
-            <div>
-              <label>Индустрии (через запятую)</label>
-              <input value={industries} onChange={e => setIndustries(e.target.value)} placeholder="fintech, saas" />
+          {/* Блок инвестора */}
+          {role === 'investor' && (
+            <div className="investor-section">
+              <h3 className="investor-section-title">Инвестор профилі</h3>
+
+              <div className="form-group">
+                <label className="form-label optional">Заңдық атауы</label>
+                <input
+                  className="form-input"
+                  value={legalName}
+                  onChange={e => setLegalName(e.target.value)}
+                  placeholder="Компания заңдық атауы"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Тип</label>
+                <select
+                  className="form-select"
+                  value={investorType}
+                  onChange={e => setInvestorType(e.target.value)}
+                >
+                  <option value="angel">Angel investor</option>
+                  <option value="vc">Venture Capital</option>
+                  <option value="corporate">Corporate investor</option>
+                </select>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label optional">Минимальный чек (USD)</label>
+                  <input
+                    className="form-input"
+                    value={minCheck}
+                    onChange={e => setMinCheck(e.target.value === '' ? '' : Number(e.target.value))}
+                    type="number"
+                    placeholder="10000"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label optional">Максимальный чек (USD)</label>
+                  <input
+                    className="form-input"
+                    value={maxCheck}
+                    onChange={e => setMaxCheck(e.target.value === '' ? '' : Number(e.target.value))}
+                    type="number"
+                    placeholder="500000"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label optional">Индустрии (через запятую)</label>
+                <input
+                  className="form-input"
+                  value={industries}
+                  onChange={e => setIndustries(e.target.value)}
+                  placeholder="fintech, saas, e-commerce"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label optional">Стадии (через запятую)</label>
+                <input
+                  className="form-input"
+                  value={stages}
+                  onChange={e => setStages(e.target.value)}
+                  placeholder="pre-seed, seed, series-a"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label optional">Website</label>
+                <input
+                  className="form-input"
+                  value={website}
+                  onChange={e => setWebsite(e.target.value)}
+                  placeholder="https://yourfund.com"
+                />
+              </div>
             </div>
+          )}
 
-            <div>
-              <label>Стадии (через запятую)</label>
-              <input value={stages} onChange={e => setStages(e.target.value)} placeholder="pre-seed, seed" />
+          {error && (
+            <div role="alert" className="error-message">
+              {error}
             </div>
+          )}
 
-            <div>
-              <label>Website</label>
-              <input value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://..." />
+          <div className="form-actions">
+            <button
+              type="submit"
+              disabled={loading}
+              className={`btn-register-submit ${loading ? 'loading' : ''}`}
+            >
+              {loading ? 'Жүктелуде...' : 'Тіркелу'}
+            </button>
+
+            <div className="login-link-container">
+              <span className="login-link-text">Аккаунт бар ма?</span>
+              <Link to="/login" className="login-link">
+                Кіру
+              </Link>
             </div>
-          </fieldset>
-        )}
-
-        {error && <div role="alert" style={{ color: 'red' }}>{error}</div>}
-
-        <div style={{ marginTop: 12 }}>
-          <button type="submit">Тіркелу</button>
-          <Link to="/login" style={{ marginLeft: 12 }}>Кіру</Link>
-        </div>
-      </form>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

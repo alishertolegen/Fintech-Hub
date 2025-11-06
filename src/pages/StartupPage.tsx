@@ -3,7 +3,7 @@ import React, { JSX, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ExternalLink, BarChart2, FileText, Globe } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-
+import './StartupPage.css';
 const API = 'http://localhost:8080/api/startups';
 const METRICS_API = 'http://localhost:8080/api/startup-metrics';
 const USERS_API = 'http://localhost:8080/api/users';
@@ -506,264 +506,266 @@ export default function StartupPage(): JSX.Element {
   
   const isInvestor = user && user.role === 'investor';
 
-  return (
-    <div className="max-w-4xl mx-auto p-6">
-      {loading && <div className="p-6 text-center bg-white dark:bg-zinc-900 rounded-2xl">Загрузка...</div>}
-      {error && <div className="p-4 text-center text-red-600 bg-white dark:bg-zinc-900 rounded-2xl">Ошибка: {error}</div>}
-      {!loading && !error && !startup && (
-        <div className="p-6 text-center bg-white dark:bg-zinc-900 rounded-2xl">Стартап не найден</div>
-      )}
+return (
+  <div className="startup-page-container">
+    {loading && <div className="page-loading">Загрузка...</div>}
+    {error && <div className="page-error">Ошибка: {error}</div>}
+    {!loading && !error && !startup && (
+      <div className="page-not-found">Стартап не найден</div>
+    )}
 
-      {startup && (
-        <article className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm">
-          <header className="flex gap-6 items-start">
+    {startup && (
+      <article className="startup-detail-card">
+        {/* HEADER */}
+        <header className="startup-detail-header">
+          <div className="detail-logo">
             <Logo name={startup.name} url={startup.logoUrl} />
-            <div className="flex-1">
-              <h1 className="text-2xl font-semibold flex items-center gap-3">
-                {startup.name}
-                <span className="text-xs py-1 px-2 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200">
-                  {startup.stage ?? '—'}
-                </span>
-                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">{startup.industry}</span>
-              </h1>
-              {startup.shortPitch && <p className="mt-2 text-gray-600 dark:text-gray-400">{startup.shortPitch}</p>}
+          </div>
+          
+          <div className="detail-info">
+            <h1 className="detail-title">
+              {startup.name}
+              <span className="detail-stage-badge">{startup.stage ?? '—'}</span>
+              <span className="detail-industry">{startup.industry}</span>
+            </h1>
+            
+            {startup.shortPitch && (
+              <p className="detail-pitch">{startup.shortPitch}</p>
+            )}
 
-              {/* Founder block */}
-              {startup.founderId && (
-                <div className="mt-3">
-                  {founderLoading ? (
-                    <div className="text-sm text-gray-500">Загрузка автора...</div>
-                  ) : founderError ? (
-                    <div className="text-sm text-red-500">{founderError}</div>
-                  ) : founder ? (
-                    <button
-                      onClick={() => navigate(`/users/${encodeURIComponent(String(founder.id ?? founder._id ?? startup.founderId))}`)}
-                      className="inline-flex items-center gap-3 text-sm hover:underline"
-                      title={`Перейти в профиль ${founder.name ?? founder.username ?? ''}`}
-                    >
-                      {founder.avatarUrl ? (
-                        <img src={founder.avatarUrl} alt={founder.name} className="w-8 h-8 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-medium text-xs">
-                          {(founder.name || founder.username || '')
-                            .split(' ')
-                            .map((p) => p[0])
-                            .slice(0, 2)
-                            .join('')
-                            .toUpperCase() || 'U'}
-                        </div>
-                      )}
-                      <span>{founder.name ?? founder.username ?? 'Профиль автора'}</span>
-                    </button>
+            {/* FOUNDER */}
+            {startup.founderId && (
+              <div className="founder-section">
+                {founderLoading ? (
+                  <div className="empty-message">Загрузка автора...</div>
+                ) : founderError ? (
+                  <div className="chart-error">{founderError}</div>
+                ) : founder ? (
+                  <button
+                    onClick={() => navigate(`/users/${encodeURIComponent(String(founder.id ?? founder._id ?? startup.founderId))}`)}
+                    className="founder-button"
+                  >
+                    {founder.avatarUrl ? (
+                      <img src={founder.avatarUrl} alt={founder.name} className="founder-avatar" />
+                    ) : (
+                      <div className="founder-avatar-initials">
+                        {(founder.name || founder.username || '').split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase() || 'U'}
+                      </div>
+                    )}
+                    <span>{founder.name ?? founder.username ?? 'Профиль автора'}</span>
+                  </button>
+                ) : (
+                  <div className="empty-message">Автор: {startup.founderId}</div>
+                )}
+              </div>
+            )}
+
+            {/* META INFO */}
+            <div className="detail-meta">
+              {startup.website && (() => {
+                try {
+                  return (
+                    <a href={startup.website} target="_blank" rel="noreferrer" className="meta-link">
+                      <Globe size={16} /> {new URL(String(startup.website)).hostname}
+                    </a>
+                  );
+                } catch { return null; }
+              })()}
+              
+              <div className="meta-item">
+                <BarChart2 size={16} /> MRR: <strong>{displayedMrr}</strong>
+              </div>
+              
+              <div className="meta-item">
+                <FileText size={16} /> Files: <strong>{Array.isArray(startup.attachments) ? startup.attachments.length : 0}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* DATES */}
+          <div className="detail-dates">
+            <div className="date-label">Создано</div>
+            <div className="date-value">{formatDate(startup.createdAt)}</div>
+            <div className="date-label">Обновлено</div>
+            <div className="date-value">{formatDate(startup.updatedAt)}</div>
+          </div>
+        </header>
+
+        {/* DESCRIPTION */}
+        <section className="content-section">
+          <h3 className="section-title">Описание</h3>
+          <p className="section-description">{startup.description ?? '—'}</p>
+        </section>
+
+        {/* METRICS */}
+        <section className="content-section">
+          <h3 className="section-title">Метрики</h3>
+          <div className="metrics-grid">
+            <div className="metric-card">
+              <div className="metric-header">
+                <div className="metric-info">
+                  <div className="metric-label">MRR (последнее)</div>
+                  <div className="metric-value">{displayedMrr}</div>
+                  <div className="metric-timestamp">{lastTimestamp ? formatDate(lastTimestamp) : ''}</div>
+                </div>
+                <div className="metric-chart">
+                  {metricsLoading ? (
+                    <div className="chart-loading">Загрузка...</div>
+                  ) : metricsError ? (
+                    <div className="chart-error">{metricsError}</div>
                   ) : (
-                    <div className="text-sm text-gray-500">Автор: {startup.founderId}</div>
+                    <Sparkline data={mrrSeries} />
                   )}
                 </div>
-              )}
+              </div>
+            </div>
 
-              <div className="mt-3 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                {startup.website && (() => {
-                  try {
-                    return (
-                      <a href={startup.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2">
-                        <Globe size={16} /> {new URL(String(startup.website)).hostname}
-                      </a>
-                    );
-                  } catch {
-                    return null;
-                  }
-                })()}
-
-                <div className="inline-flex items-center gap-2">
-                  <BarChart2 size={16} /> MRR: <strong>{displayedMrr}</strong>
+            <div className="metric-card">
+              <div className="metric-header">
+                <div className="metric-info">
+                  <div className="metric-label">Active Users</div>
+                  <div className="metric-value">{displayedUsers}</div>
+                  <div className="metric-timestamp">{lastTimestamp ? formatDate(lastTimestamp) : ''}</div>
                 </div>
-
-                <div className="inline-flex items-center gap-2">
-                  <FileText size={16} /> Files: <strong>{Array.isArray(startup.attachments) ? startup.attachments.length : 0}</strong>
+                <div className="metric-chart">
+                  {metricsLoading ? (
+                    <div className="chart-loading">Загрузка...</div>
+                  ) : metricsError ? (
+                    <div className="chart-error">{metricsError}</div>
+                  ) : (
+                    <Sparkline data={usersSeries} />
+                  )}
                 </div>
               </div>
             </div>
 
-            <div className="text-right">
-              <div className="text-sm text-gray-500 dark:text-gray-400">Создано</div>
-              <div className="text-sm font-medium">{formatDate(startup.createdAt)}</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">Обновлено</div>
-              <div className="text-sm font-medium">{formatDate(startup.updatedAt)}</div>
-            </div>
-          </header>
-
-          <section className="mt-6">
-            <h3 className="text-lg font-medium">Описание</h3>
-            <p className="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-line">{startup.description ?? '—'}</p>
-          </section>
-
-          {/* Метрики (без изменений) */}
-          <section className="mt-6">
-            <h3 className="text-lg font-medium">Метрики</h3>
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
-              <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
-                <div className="flex items-baseline justify-between">
-                  <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">MRR (последнее)</div>
-                    <div className="text-2xl font-semibold">{displayedMrr}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{lastTimestamp ? formatDate(lastTimestamp) : ''}</div>
-                  </div>
-                  <div className="w-40">
-                    {metricsLoading ? (
-                      <div className="text-xs text-gray-500">Загрузка...</div>
-                    ) : metricsError ? (
-                      <div className="text-xs text-red-500">{metricsError}</div>
-                    ) : (
-                      <Sparkline data={mrrSeries} />
-                    )}
-                  </div>
+            <div className="metric-card">
+              <div className="metric-header">
+                <div className="metric-info">
+                  <div className="metric-label">Burn Rate</div>
+                  <div className="metric-value">{displayedBurn != null ? displayedBurn : '—'}</div>
+                  <div className="metric-timestamp">{lastTimestamp ? formatDate(lastTimestamp) : ''}</div>
                 </div>
-              </div>
-
-              <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
-                <div className="flex items-baseline justify-between">
-                  <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Active Users (последнее)</div>
-                    <div className="text-2xl font-semibold">{displayedUsers}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{lastTimestamp ? formatDate(lastTimestamp) : ''}</div>
-                  </div>
-                  <div className="w-40">
-                    {metricsLoading ? (
-                      <div className="text-xs text-gray-500">Загрузка...</div>
-                    ) : metricsError ? (
-                      <div className="text-xs text-red-500">{metricsError}</div>
-                    ) : (
-                      <Sparkline data={usersSeries} />
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
-                <div className="flex items-baseline justify-between">
-                  <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Burn Rate (последнее)</div>
-                    <div className="text-2xl font-semibold">{displayedBurn != null ? displayedBurn : '—'}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{lastTimestamp ? formatDate(lastTimestamp) : ''}</div>
-                  </div>
-                  <div className="w-40">
-                    {metricsLoading ? (
-                      <div className="text-xs text-gray-500">Загрузка...</div>
-                    ) : metricsError ? (
-                      <div className="text-xs text-red-500">{metricsError}</div>
-                    ) : (
-                      <Sparkline data={burnSeries} />
-                    )}
-                  </div>
+                <div className="metric-chart">
+                  {metricsLoading ? (
+                    <div className="chart-loading">Загрузка...</div>
+                  ) : metricsError ? (
+                    <div className="chart-error">{metricsError}</div>
+                  ) : (
+                    <Sparkline data={burnSeries} />
+                  )}
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* История */}
-            <div className="mt-4">
-              <h4 className="text-sm font-medium mb-2">История</h4>
-              {metricsLoading && <div className="text-sm text-gray-500">Загрузка метрик...</div>}
-              {metricsError && <div className="text-sm text-red-500">{metricsError}</div>}
-              {!metricsLoading && (!metrics || metrics.length === 0) && <div className="text-sm text-gray-500">История метрик отсутствует.</div>}
-              {!metricsLoading && metrics && metrics.length > 0 && (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-xs text-gray-500 dark:text-gray-400">
-                        <th className="py-2 pr-4">Дата</th>
-                        <th className="py-2 pr-4">MRR</th>
-                        <th className="py-2 pr-4">Active Users</th>
-                        <th className="py-2 pr-4">Burn Rate</th>
-                        <th className="py-2 pr-4">Other</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {metrics.slice().reverse().map((m, i) => (
-                        <tr key={m._id ?? i} className="border-t border-gray-100 dark:border-zinc-800">
-                          <td className="py-2 pr-4">{formatDate(m.date)}</td>
-                          <td className="py-2 pr-4">{m.mrr ?? '—'}</td>
-                          <td className="py-2 pr-4">{m.activeUsers ?? '—'}</td>
-                          <td className="py-2 pr-4">{m.burnRate ?? '—'}</td>
-                          <td className="py-2 pr-4">{m.other ? JSON.stringify(m.other) : '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </section>
-          <section className="mt-6">
-  <h3 className="text-lg font-medium">Оценка компании</h3>
-  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-    <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
-      <div className="text-xs text-gray-500 dark:text-gray-400">Valuation Pre-Money</div>
-      <div className="text-2xl font-semibold">
-        {lastMetric?.valuationPreMoney ?? startup?.metricsSnapshot?.valuationPreMoney ?? '—'}
-      </div>
-    </div>
-
-    <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
-      <div className="text-xs text-gray-500 dark:text-gray-400">Valuation Post-Money</div>
-      <div className="text-2xl font-semibold">
-        {lastMetric?.valuationPostMoney ?? startup?.metricsSnapshot?.valuationPostMoney ?? '—'}
-      </div>
-    </div>
-  </div>
-</section>
-
-
-          {/* Files */}
-          <section className="mt-6">
-            <h3 className="text-lg font-medium">Дополнительные файлы</h3>
-            {Array.isArray(startup.attachments) && startup.attachments.length > 0 ? (
-              <ul className="mt-2 space-y-2">
-                {startup.attachments.map((a: any, i: number) => {
-                  const href = String(a?.url ?? a);
-                  const name = (a?.name as string) ?? href.split('/').pop() ?? `file-${i + 1}`;
-                  return (
-                    <li key={i} className="flex items-center justify-between gap-4">
-                      <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm">
-                        <FileText size={16} /> {name}
-                      </a>
-                      <div className="text-xs text-gray-500 dark:text-gray-400" />
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">Файлы не добавлены</div>
+          {/* METRICS HISTORY */}
+          <div className="metrics-history">
+            <h4 className="history-title">История</h4>
+            {metricsLoading && <div className="empty-message">Загрузка метрик...</div>}
+            {metricsError && <div className="chart-error">{metricsError}</div>}
+            {!metricsLoading && (!metrics || metrics.length === 0) && (
+              <div className="empty-message">История метрик отсутствует.</div>
             )}
-          </section>
+            {!metricsLoading && metrics && metrics.length > 0 && (
+              <div className="history-table-wrapper">
+                <table className="history-table">
+                  <thead>
+                    <tr>
+                      <th>Дата</th>
+                      <th>MRR</th>
+                      <th>Active Users</th>
+                      <th>Burn Rate</th>
+                      <th>Other</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metrics.slice().reverse().map((m, i) => (
+                      <tr key={m._id ?? i}>
+                        <td>{formatDate(m.date)}</td>
+                        <td>{m.mrr ?? '—'}</td>
+                        <td>{m.activeUsers ?? '—'}</td>
+                        <td>{m.burnRate ?? '—'}</td>
+                        <td>{m.other ? JSON.stringify(m.other) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </section>
 
-          {/* Offers & Investments */}
-          <section className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-lg">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Офферы</h3>
+        {/* VALUATION */}
+        <section className="content-section">
+          <h3 className="section-title">Оценка компании</h3>
+          <div className="valuation-grid">
+            <div className="valuation-card">
+              <div className="valuation-label">Valuation Pre-Money</div>
+              <div className="valuation-value">
+                {lastMetric?.valuationPreMoney ?? startup?.metricsSnapshot?.valuationPreMoney ?? '—'}
+              </div>
+            </div>
+            <div className="valuation-card">
+              <div className="valuation-label">Valuation Post-Money</div>
+              <div className="valuation-value">
+                {lastMetric?.valuationPostMoney ?? startup?.metricsSnapshot?.valuationPostMoney ?? '—'}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* FILES */}
+        <section className="content-section">
+          <h3 className="section-title">Дополнительные файлы</h3>
+          {Array.isArray(startup.attachments) && startup.attachments.length > 0 ? (
+            <div className="files-list">
+              {startup.attachments.map((a: any, i: number) => {
+                const href = String(a?.url ?? a);
+                const name = (a?.name as string) ?? href.split('/').pop() ?? `file-${i + 1}`;
+                return (
+                  <div key={i} className="file-item">
+                    <a href={href} target="_blank" rel="noreferrer" className="file-link">
+                      <FileText size={16} /> {name}
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="empty-message">Файлы не добавлены</div>
+          )}
+        </section>
+
+        {/* OFFERS */}
+        <section className="content-section">
+          <div className="dual-section">
+            <div className="offers-card">
+              <div className="card-header">
+                <h3 className="card-title">Офферы</h3>
                 {isInvestor && (
-                  <button onClick={() => setMakingOffer((v) => !v)} className="text-sm py-1 px-2 border rounded-md">
+                  <button onClick={() => setMakingOffer(v => !v)} className="btn-make-offer">
                     {makingOffer ? 'Отмена' : 'Сделать offer'}
                   </button>
                 )}
               </div>
 
               {makingOffer && isInvestor && (
-                <form onSubmit={submitOffer} className="mt-3 space-y-2">
+                <form onSubmit={submitOffer} className="offer-form">
                   <input
                     placeholder="Заголовок оффера"
                     value={offerTitle}
                     onChange={(e) => setOfferTitle(e.target.value)}
-                    className="w-full p-2 rounded-md bg-white dark:bg-zinc-900 border"
+                    className="form-input"
                     required
                   />
-                  <div className="flex gap-2">
+                  <div className="form-row">
                     <input
                       placeholder="Сумма (USD)"
                       type="number"
                       value={offerAmount}
                       onChange={(e) => setOfferAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                      className="w-1/2 p-2 rounded-md bg-white dark:bg-zinc-900 border"
+                      className="form-input"
                       required
                     />
                     <input
@@ -771,107 +773,83 @@ export default function StartupPage(): JSX.Element {
                       type="number"
                       value={offerEquity}
                       onChange={(e) => setOfferEquity(e.target.value === '' ? '' : Number(e.target.value))}
-                      className="w-1/2 p-2 rounded-md bg-white dark:bg-zinc-900 border"
+                      className="form-input"
                       required
                     />
                   </div>
-                  <div className="flex gap-2 items-center">
-                    <label className="text-sm">Видимость:</label>
-                    <select value={offerVisibility} onChange={(e) => setOfferVisibility(e.target.value as any)} className="p-1 rounded-md">
+                  <div className="form-footer">
+                    <label className="form-label">Видимость:</label>
+                    <select value={offerVisibility} onChange={(e) => setOfferVisibility(e.target.value as any)} className="form-select">
                       <option value="private">private</option>
                       <option value="public">public</option>
                     </select>
-                    <button type="submit" disabled={offerSubmitting} className="ml-auto py-1 px-3 rounded-md bg-indigo-600 text-white text-sm">
+                    <button type="submit" disabled={offerSubmitting} className="btn-submit">
                       {offerSubmitting ? 'Отправка...' : 'Отправить'}
                     </button>
                   </div>
                 </form>
               )}
 
-              <div className="mt-4">
+              <div>
                 {offersLoading ? (
-                  <div className="text-sm text-gray-500">Загрузка офферов...</div>
+                  <div className="empty-message">Загрузка офферов...</div>
                 ) : offersError ? (
-                  <div className="text-sm text-red-500">{offersError}</div>
+                  <div className="chart-error">{offersError}</div>
                 ) : !offers || offers.length === 0 ? (
-                  <div className="text-sm text-gray-500">Офферов нет</div>
+                  <div className="empty-message">Офферов нет</div>
                 ) : (
-                  <ul className="space-y-3">
+                  <div className="offers-list">
                     {offers.map((o) => (
-                      <li key={o._id ?? o.id} className="p-3 bg-white dark:bg-zinc-900 rounded-md border">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="grow">
-                            <div className="text-sm text-gray-500">{o.type} • {o.visibility}</div>
-                            <div className="font-medium">{o.title}</div>
-                            <div className="text-xs text-gray-500 mt-1">
+                      <div key={o._id ?? o.id} className="offer-item">
+                        <div className="item-content">
+                          <div className="item-main">
+                            <div className="item-type">{o.type} • {o.visibility}</div>
+                            <div className="item-title">{o.title}</div>
+                            <div className="item-details">
                               {o.amount ? `$${o.amount}` : '—'} • {o.equityPercent ?? '—'}%
                             </div>
-                            <div className="text-xs text-gray-400 mt-1">{o.note}</div>
+                            {o.note && <div className="item-note">{o.note}</div>}
                           </div>
-
-                          <div className="text-right text-sm">
-                            <div className="text-xs text-gray-400">{formatDate(o.createdAt)}</div>
-                            <div className="mt-2">
-                              <span className="inline-block py-1 px-2 text-xs rounded-md bg-zinc-100 dark:bg-zinc-800">{o.status}</span>
-                            </div>
+                          <div className="item-meta">
+                            <div className="item-date">{formatDate(o.createdAt)}</div>
+                            <span className={`status-badge ${o.status}`}>{o.status}</span>
                           </div>
                         </div>
-
-                        {/* actions for founder */}
                         {isFounder && (
-                          <div className="mt-3 flex gap-2">
-                            <button onClick={() => updateOfferStatus(String(o._id ?? o.id), 'accepted')} className="py-1 px-2 text-sm bg-green-50 dark:bg-green-900/20 rounded-md">
+                          <div className="offer-actions">
+                            <button onClick={() => updateOfferStatus(String(o._id ?? o.id), 'accepted')} className="btn-accept">
                               Принять
                             </button>
-                            <button onClick={() => updateOfferStatus(String(o._id ?? o.id), 'rejected')} className="py-1 px-2 text-sm bg-red-50 dark:bg-red-900/20 rounded-md">
+                            <button onClick={() => updateOfferStatus(String(o._id ?? o.id), 'rejected')} className="btn-reject">
                               Отклонить
                             </button>
                           </div>
                         )}
-                      </li>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 )}
               </div>
             </div>
+          </div>
+        </section>
 
-
-
-
-          </section>
-
-          <section className="mt-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <a
-                href={startup.website || '#'}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 py-1 px-3 rounded-md text-sm bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
-              >
-                <ExternalLink size={14} /> Официальный сайт
-              </a>
-
-              <button
-                onClick={() => navigate(`/startups/edit/${encodeURIComponent(String(idForApi()))}`)}
-                className="py-1 px-3 border rounded-md text-sm"
-                title="Редактировать"
-              >
-                Редактировать
-              </button>
-            </div>
-
-            <div>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="py-1 px-3 rounded-md text-sm bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
-              >
-                {deleting ? 'Удаление...' : 'Удалить'}
-              </button>
-            </div>
-          </section>
-        </article>
-      )}
-    </div>
-  );
+        {/* ACTION BUTTONS */}
+        <section className="action-buttons">
+          <div className="primary-actions">
+            <a href={startup.website || '#'} target="_blank" rel="noreferrer" className="btn-website">
+              <ExternalLink size={16} /> Официальный сайт
+            </a>
+            <button onClick={() => navigate(`/startups/edit/${encodeURIComponent(String(idForApi()))}`)} className="btn-edit">
+              Редактировать
+            </button>
+          </div>
+          <button onClick={handleDelete} disabled={deleting} className="btn-delete">
+            {deleting ? 'Удаление...' : 'Удалить'}
+          </button>
+        </section>
+      </article>
+    )}
+  </div>
+);
 }

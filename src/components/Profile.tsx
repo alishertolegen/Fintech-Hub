@@ -47,6 +47,23 @@ export default function Profile() {
   const [user, setUser] = useState<ApiUser | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  type InvestorApi = {
+  id?: string;
+  userId?: string;
+  legalName?: string;
+  type?: string; // e.g. "angel"
+  minCheck?: number;
+  maxCheck?: number;
+  preferredIndustries?: string[];
+  preferredStages?: string[];
+  description?: string;
+  website?: string;
+  isVerified?: boolean;
+};
+
+const [investor, setInvestor] = useState<InvestorApi | null>(null);
+const [editingInvestor, setEditingInvestor] = useState<boolean>(false);
+const [investorSaving, setInvestorSaving] = useState<boolean>(false);
 
   // если есть user в контексте — используем его
   useEffect(() => {
@@ -112,6 +129,32 @@ export default function Profile() {
       setUser(null);
     }
   }, [authUser, token, authLoading]);
+  useEffect(() => {
+  if (!user) return;
+  if (user.role !== 'investor') return;
+
+  const abort = new AbortController();
+  (async () => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/investors/user/${user.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: abort.signal,
+      });
+      if (res.ok) {
+        const data: InvestorApi = await res.json();
+        setInvestor(data);
+      } else if (res.status === 404) {
+        setInvestor(null); // нет профиля инвестора
+      } else {
+        // можно логировать ошибку, но не ломать UI
+        console.warn('Не удалось загрузить investor', res.status);
+      }
+    } catch (e: any) {
+      if (e.name !== 'AbortError') console.error(e);
+    }
+  })();
+  return () => abort.abort();
+}, [user, token]);
 
   if (authLoading || loading) {
     return (
@@ -142,6 +185,45 @@ export default function Profile() {
       </div>
     );
   }
+async function saveInvestor(updated: InvestorApi) {
+  if (!user) return;
+  setInvestorSaving(true);
+  try {
+    let res;
+    if (updated.id) {
+      res = await fetch(`http://localhost:8080/api/investors/${updated.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updated),
+      });
+    } else {
+      // если вы добавили updateByUserId
+      res = await fetch(`http://localhost:8080/api/investors/user/${user.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updated),
+      });
+    }
+
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.message ?? `Ошибка ${res.status}`);
+    }
+    const saved: InvestorApi = await res.json();
+    setInvestor(saved);
+    setEditingInvestor(false);
+  } catch (e: any) {
+    alert('Ошибка при сохранении: ' + (e.message ?? e));
+  } finally {
+    setInvestorSaving(false);
+  }
+}
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -216,6 +298,102 @@ export default function Profile() {
         <div className="mt-6">
           <h2 className="text-sm text-gray-500 dark:text-gray-400">Остальная информация</h2>
           <ul className="mt-2 space-y-2 text-sm text-gray-700 dark:text-gray-300">
+            {user.role === 'investor' && (
+  <div className="mt-6">
+    <h2 className="text-sm text-gray-500 dark:text-gray-400">Профиль инвестора</h2>
+
+    {!editingInvestor ? (
+      <div className="mt-2 text-sm">
+        <div>Юридическое имя: <span className="font-medium">{investor?.legalName ?? '—'}</span></div>
+        <div>Тип: <span className="font-medium">{investor?.type ?? '—'}</span></div>
+        <div>Чек min — max: <span className="font-medium">{investor?.minCheck ?? '—'} — {investor?.maxCheck ?? '—'}</span></div>
+        <div>Отрасли: <span className="font-medium">{(investor?.preferredIndustries || []).join(', ') || '—'}</span></div>
+        <div>Стадии: <span className="font-medium">{(investor?.preferredStages || []).join(', ') || '—'}</span></div>
+        <div>Сайт: <span className="font-medium">{investor?.website ?? '—'}</span></div>
+        <div>Описание: <div className="mt-1 text-sm">{investor?.description ?? '—'}</div></div>
+
+        <div className="mt-3">
+          <button onClick={() => setEditingInvestor(true)} className="px-3 py-1 rounded bg-indigo-600 text-white">
+            Редактировать профиль инвестора
+          </button>
+        </div>
+      </div>
+    ) : (
+      <div className="mt-2 space-y-2">
+        <input
+          className="border p-2 rounded w-full"
+          placeholder="Юридическое имя"
+          value={investor?.legalName ?? ''}
+          onChange={(e) => setInvestor(prev => ({ ...(prev ?? {}), legalName: e.target.value }))}
+        />
+        <input
+          className="border p-2 rounded w-full"
+          placeholder="Тип (angel, vc и т.д.)"
+          value={investor?.type ?? ''}
+          onChange={(e) => setInvestor(prev => ({ ...(prev ?? {}), type: e.target.value }))}
+        />
+        <div className="flex gap-2">
+          <input
+            type="number"
+            className="border p-2 rounded flex-1"
+            placeholder="minCheck"
+            value={investor?.minCheck ?? ''}
+            onChange={(e) => setInvestor(prev => ({ ...(prev ?? {}), minCheck: e.target.value ? Number(e.target.value) : undefined }))}
+          />
+          <input
+            type="number"
+            className="border p-2 rounded flex-1"
+            placeholder="maxCheck"
+            value={investor?.maxCheck ?? ''}
+            onChange={(e) => setInvestor(prev => ({ ...(prev ?? {}), maxCheck: e.target.value ? Number(e.target.value) : undefined }))}
+          />
+        </div>
+
+        <input
+          className="border p-2 rounded w-full"
+          placeholder="Отрасли (через запятую)"
+          value={(investor?.preferredIndustries ?? []).join(', ')}
+          onChange={(e) => setInvestor(prev => ({ ...(prev ?? {}), preferredIndustries: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))}
+        />
+
+        <input
+          className="border p-2 rounded w-full"
+          placeholder="Стадии (через запятую)"
+          value={(investor?.preferredStages ?? []).join(', ')}
+          onChange={(e) => setInvestor(prev => ({ ...(prev ?? {}), preferredStages: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))}
+        />
+
+        <input
+          className="border p-2 rounded w-full"
+          placeholder="Сайт"
+          value={investor?.website ?? ''}
+          onChange={(e) => setInvestor(prev => ({ ...(prev ?? {}), website: e.target.value }))}
+        />
+
+        <textarea
+          className="border p-2 rounded w-full"
+          placeholder="Описание"
+          value={investor?.description ?? ''}
+          onChange={(e) => setInvestor(prev => ({ ...(prev ?? {}), description: e.target.value }))}
+        />
+
+        <div className="flex gap-2">
+          <button
+            className="px-3 py-1 rounded bg-green-600 text-white"
+            onClick={() => saveInvestor(investor ?? { userId: user.id })}
+            disabled={investorSaving}
+          >
+            {investorSaving ? 'Сохранение...' : 'Сохранить'}
+          </button>
+          <button className="px-3 py-1 rounded bg-gray-200" onClick={() => setEditingInvestor(false)} disabled={investorSaving}>
+            Отмена
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+)}
+
             <li className="flex items-center gap-2">
               <UserIcon size={14} /> Роль: <span className="ml-1 font-medium">{user.role}</span>
             </li>

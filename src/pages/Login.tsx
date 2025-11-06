@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import './Login.css';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -28,38 +29,62 @@ export default function LoginPage() {
   };
 
   return (
-    <div>
-      <h2>Кіру</h2>
-      <form onSubmit={submit}>
-        <div>
-          <label>Email</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="you@example.com"
-          />
-        </div>
-        <div>
-          <label>Құпия сөз</label>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-          />
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <h2 className="login-title">Кіру</h2>
+          <p className="login-subtitle">Өз аккаунтыңызға кіріңіз</p>
         </div>
 
-        {error && <div role="alert" style={{ color: 'red' }}>{error}</div>}
+        <form onSubmit={submit} className="login-form">
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="form-input"
+            />
+          </div>
 
-        <div>
-          <button type="submit" disabled={loading}>
-            {loading ? 'Жүктелуде...' : 'Кіру'}
-          </button>
-          <Link to="/register" style={{ marginLeft: 10 }}>Тіркелу</Link>
-        </div>
-      </form>
+          <div className="form-group">
+            <label className="form-label">Құпия сөз</label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="form-input"
+            />
+          </div>
+
+          {error && (
+            <div role="alert" className="error-message">
+              {error}
+            </div>
+          )}
+
+          <div className="form-actions">
+            <button 
+              type="submit" 
+              disabled={loading}
+              className={`btn-login-submit ${loading ? 'loading' : ''}`}
+            >
+              {loading ? 'Жүктелуде...' : 'Кіру'}
+            </button>
+
+            <div className="register-link-container">
+              <span className="register-link-text">Аккаунт жоқ па?</span>
+              <Link to="/register" className="register-link">
+                Тіркелу
+              </Link>
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
