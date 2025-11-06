@@ -814,18 +814,25 @@ return (
                             <div className="item-date">{formatDate(o.createdAt)}</div>
                             <span className={`status-badge ${o.status}`}>{o.status}</span>
                           </div>
-                        </div>
-                        {isFounder && (
-                          <div className="offer-actions">
-                            <button onClick={() => updateOfferStatus(String(o._id ?? o.id), 'accepted')} className="btn-accept">
-                              Принять
-                            </button>
-                            <button onClick={() => updateOfferStatus(String(o._id ?? o.id), 'rejected')} className="btn-reject">
-                              Отклонить
-                            </button>
                           </div>
-                        )}
-                      </div>
+                          {isFounder && o.status !== 'accepted' && o.status !== 'rejected' && (
+                            <div className="offer-actions">
+                              <button
+                                onClick={() => updateOfferStatus(String(o._id ?? o.id), 'accepted')}
+                                className="btn-accept"
+                              >
+                                Принять
+                              </button>
+                              <button
+                                onClick={() => updateOfferStatus(String(o._id ?? o.id), 'rejected')}
+                                className="btn-reject"
+                              >
+                                Отклонить
+                              </button>
+                            </div>
+                          )}
+                          </div>
+
                     ))}
                   </div>
                 )}

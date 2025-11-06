@@ -3,22 +3,22 @@ import React, { useEffect, useMemo, useState, JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, ExternalLink, BarChart2, FileText, Globe, Plus } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import './StartupsList.css'; 
 
 const API = 'http://localhost:8080/api/startups';
 
-type MetricsSnapshot = { 
-  mrr?: number | null; 
-  users?: number | null; 
-  valuationPreMoney?: number | null; 
+type MetricsSnapshot = {
+  mrr?: number | null;
+  users?: number | null;
+  valuationPreMoney?: number | null;
 };
-
 
 type Startup = {
   id?: string;
   _id?: string;
   name?: string;
   slug?: string;
-  founderId?: any; // может быть string или объект или вложенный founder
+  founderId?: any;
   founder?: any;
   stage?: string;
   industry?: string;
@@ -34,18 +34,14 @@ type Startup = {
 };
 
 function Logo({ name, url }: { name?: string; url?: string }) {
-  if (url) return <img src={url} alt={name} className="w-14 h-14 rounded-md object-cover" />;
+  if (url) return <img src={url} alt={name} className="logo-image" />;
   const initials = (name || '')
     .split(' ')
     .map((p) => p[0])
     .slice(0, 2)
     .join('')
     .toUpperCase();
-  return (
-    <div className="w-14 h-14 rounded-md bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-semibold">
-      {initials || 'S'}
-    </div>
-  );
+  return <div className="logo-initials">{initials || 'S'}</div>;
 }
 
 function formatDate(iso?: string | number | Date): string {
@@ -75,20 +71,13 @@ export default function MyStartupsPage(): JSX.Element {
       setLoading(true);
       setError(null);
       try {
-        // попытка найти подходящий id в объекте user
         const founderCandidate =
           (user as any).id ?? (user as any)._id ?? (user as any).userId ?? (user as any).sub ?? '';
-
         const params = new URLSearchParams();
-        // ставим параметр только если есть непустой кандидат
         if (founderCandidate) params.set('founderId', String(founderCandidate));
         if (searchTerm.trim()) params.set('q', searchTerm.trim());
 
         const url = `${API}${params.toString() ? '?' + params.toString() : ''}`;
-
-        // для отладки можно раскомментировать:
-        // console.debug('Fetching startups URL:', url, 'founderCandidate:', founderCandidate);
-
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -106,32 +95,23 @@ export default function MyStartupsPage(): JSX.Element {
         const data = (await res.json()) as Startup[];
         if (canceled) return;
 
-        // Сопоставительная фильтрация на клиенте: защищает от ситуаций,
-        // когда бэкенд игнорирует founderId или использует другую структуру.
         const founder = String(founderCandidate);
-        const clientFiltered = Array.isArray(data)
+        const filtered = Array.isArray(data)
           ? data.filter((s) => {
-              // возможные варианты хранения автора
               const candidates = [
                 s.founderId,
                 s.founder?._id,
                 s.founder?.['id'],
-                s._id,
-                s.id,
-                // иногда founder хранится как объект или ссылка
                 typeof s.founderId === 'object' ? s.founderId?._id ?? s.founderId?.id : undefined,
-                typeof s.founder === 'string' ? s.founder : undefined
-              ].filter(Boolean).map(String);
-
+                typeof s.founder === 'string' ? s.founder : undefined,
+              ]
+                .filter(Boolean)
+                .map(String);
               return founder ? candidates.includes(founder) : false;
             })
           : [];
 
-        // если сервер вернул правильный отфильтрованный массив (все элементы совпадают),
-        // используем его; иначе используем clientFiltered (надёжнее).
-        const final = Array.isArray(data) && data.length > 0 && clientFiltered.length === data.length ? data : clientFiltered;
-
-        setStartups(final);
+        setStartups(filtered);
       } catch (e: any) {
         if (!canceled) setError(e.message ?? 'Не удалось загрузить стартаптар');
       } finally {
@@ -155,92 +135,86 @@ export default function MyStartupsPage(): JSX.Element {
     );
   }, [startups, searchTerm]);
 
-  if (authLoading) {
-    return <div className="p-6 text-center">Проверка авторизации...</div>;
-  }
+  if (authLoading) return <div className="loading-state">Проверка авторизации...</div>;
 
-  if (!user) {
+  if (!user)
     return (
-      <div className="max-w-4xl mx-auto p-6 text-center">
-        <h2 className="text-xl font-semibold">Войдите, чтобы увидеть ваши стартапы</h2>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Только авторизованные пользователи могут просматривать личные стартапы.</p>
-        <div className="mt-4">
-          <Link to="/login" className="py-2 px-4 rounded-md border inline-block">
-            Войти
-          </Link>
-        </div>
+      <div className="empty-state">
+        <h3>Войдите, чтобы увидеть ваши стартапы</h3>
+        <p>Только авторизованные пользователи могут просматривать личные стартапы.</p>
+        <Link to="/login" className="btn-details">
+          Войти
+        </Link>
       </div>
     );
-  }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <header className="flex items-start justify-between gap-6 mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Менің стартаптарым / Мои стартапы</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Список стартапов, созданных вами</p>
-          <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">Найдено: <strong>{filtered.length}</strong></div>
+    <div className="startups-container">
+      <header className="startups-header">
+        <div className="startups-title-section">
+          <h1>Менің стартаптарым / Мои стартапы</h1>
+          <p className="startups-subtitle">Список стартапов, созданных вами</p>
+          <div className="startups-count">
+            Найдено: <strong>{filtered.length}</strong>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-2 text-gray-400" />
+        <div className="startups-filters">
+          <div className="search-wrapper">
+            <Search className="search-icon" size={20} />
             <input
-              className="pl-10 pr-4 py-2 border rounded-md w-72 bg-white dark:bg-zinc-900"
-              placeholder="Поиск по названию или описанию..."
+              className="search-input"
+              placeholder="Поиск стартапа, pitch, отрасль..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          <Link
-            to="/startups/create"
-            className="inline-flex items-center gap-2 py-2 px-3 rounded-md bg-indigo-600 text-white"
-          >
+          <Link to="/startups/create" className="btn-details">
             <Plus size={16} /> Создать стартап
           </Link>
         </div>
       </header>
 
-      {loading && <div className="p-6 text-center bg-white dark:bg-zinc-900 rounded-2xl mb-4">Загрузка...</div>}
-      {error && <div className="p-4 text-center text-red-600 bg-white dark:bg-zinc-900 rounded-2xl mb-4">Ошибка: {error}</div>}
+      {loading && <div className="loading-state">Загрузка...</div>}
+      {error && <div className="error-state">Ошибка: {error}</div>}
 
-      <div className="grid gap-4">
+      <div className="startups-grid">
         {filtered.map((s) => {
           const key = s.id ?? s._id ?? s.slug ?? Math.random().toString(36).slice(2, 9);
           return (
-            <article key={key} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm flex gap-4 items-start">
-              <div className="flex-shrink-0">
+            <article key={key} className="startup-card">
+              <div className="startup-logo">
                 <Logo name={s.name} url={s.logoUrl} />
               </div>
 
-              <div className="flex-1">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-lg font-semibold flex items-center gap-3">
+              <div className="startup-content">
+                <div className="startup-header">
+                  <div className="startup-title-wrapper">
+                    <h2>
                       {s.name}
-                      <span className="text-xs py-1 px-2 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200">{s.stage}</span>
-                      <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">{s.industry}</span>
+                      <span className="stage-badge">{s.stage}</span>
+                      <span className="industry-text">{s.industry}</span>
                     </h2>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{s.shortPitch}</p>
+                    <p className="short-pitch">{s.shortPitch}</p>
                   </div>
 
-                  <div className="text-right text-sm text-gray-600 dark:text-gray-400">
+                  <div className="startup-metrics">
                     <div>MRR: <strong>{s.metricsSnapshot?.mrr ?? 0}</strong></div>
                     <div>Users: <strong>{s.metricsSnapshot?.users ?? 0}</strong></div>
                     <div>Valuation: <strong>{s.metricsSnapshot?.valuationPreMoney ?? 0}</strong></div>
-                    <div className="mt-2 text-xs">{formatDate(s.createdAt)}</div>
+                    <div className="created-date">{formatDate(s.createdAt)}</div>
                   </div>
                 </div>
 
-                <p className="mt-3 text-sm text-gray-700 dark:text-gray-300 line-clamp-3">{s.description}</p>
+                <p className="startup-description">{s.description}</p>
 
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                <div className="startup-footer">
+                  <div className="startup-meta">
                     {s.website && (() => {
                       try {
                         return (
-                          <a href={s.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1">
+                          <a href={s.website} target="_blank" rel="noreferrer" className="meta-link">
                             <Globe size={14} /> {new URL(s.website).hostname}
                           </a>
                         );
@@ -249,24 +223,17 @@ export default function MyStartupsPage(): JSX.Element {
                       }
                     })()}
 
-                    <div className="inline-flex items-center gap-1"><BarChart2 size={14} /> {s.attachments?.length ?? 0} files</div>
+                    <div className="meta-info">
+                      <BarChart2 size={14} /> {s.attachments?.length ?? 0} files
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <Link
-                      to={`/startups/${s.id ?? s._id}`}
-                      className="inline-flex items-center gap-2 py-1 px-3 border rounded-md text-sm"
-                    >
-                      <FileText size={14} /> Подробнее
+                  <div className="startup-actions">
+                    <Link to={`/startups/${s.id ?? s._id}`} className="btn-details">
+                      <FileText size={16} /> Подробнее
                     </Link>
-
-                    <a
-                      href={s.website || '#'}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 py-1 px-3 rounded-md text-sm bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
-                    >
-                      <ExternalLink size={14} /> Сайт
+                    <a href={s.website || '#'} target="_blank" rel="noreferrer" className="btn-website">
+                      <ExternalLink size={16} /> Сайт
                     </a>
                   </div>
                 </div>
@@ -276,9 +243,9 @@ export default function MyStartupsPage(): JSX.Element {
         })}
 
         {filtered.length === 0 && !loading && (
-          <div className="p-6 text-center text-gray-600 dark:text-gray-400 bg-white dark:bg-zinc-900 rounded-2xl">
-            <h3 className="text-lg font-medium">Стартаптар табылмады</h3>
-            <p className="mt-2">У вас пока нет созданных стартапов — начните с кнопки «Создать стартап».</p>
+          <div className="empty-state">
+            <h3>Стартаптар табылмады</h3>
+            <p>У вас пока нет созданных стартапов — начните с кнопки «Создать стартап».</p>
           </div>
         )}
       </div>

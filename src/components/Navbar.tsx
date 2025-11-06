@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import './Navbar.css';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate(); // 👈 добавили хук
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -13,6 +14,12 @@ export default function Navbar() {
 
   const closeMenu = () => {
     setIsMenuOpen(false);
+  };
+
+  const handleLogout = () => {
+    logout();     
+    closeMenu();     
+    navigate('/login'); 
   };
 
   return (
@@ -58,7 +65,7 @@ export default function Navbar() {
             {user ? (
               <>
                 <span className="user-name">{user.fullName || user.email}</span>
-                <button onClick={() => { logout(); closeMenu(); }} className="btn-logout">
+                <button onClick={handleLogout} className="btn-logout">
                   Шығу
                 </button>
               </>
