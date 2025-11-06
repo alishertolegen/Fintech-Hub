@@ -10,7 +10,12 @@ const USERS_API = 'http://localhost:8080/api/users';
 const OFFERS_API = 'http://localhost:8080/api/offers';
 const INVESTMENTS_API = 'http://localhost:8080/api/investments';
 
-type MetricsSnapshot = { mrr?: number | null; users?: number | null };
+type MetricsSnapshot = { 
+  mrr?: number | null; 
+  users?: number | null;
+  valuationPreMoney?: number | null;
+  valuationPostMoney?: number | null;
+};
 
 type MetricRecord = {
   _id?: string;
@@ -19,8 +24,11 @@ type MetricRecord = {
   mrr?: number | null;
   activeUsers?: number | null;
   burnRate?: number | null;
+  valuationPreMoney?: number | null;
+  valuationPostMoney?: number | null;
   other?: Record<string, any> | null;
 };
+
 
 type Startup = {
   id?: string;
@@ -487,7 +495,7 @@ export default function StartupPage(): JSX.Element {
   const mrrSeries = metrics?.map((m) => (m.mrr == null ? null : Number(m.mrr))) ?? [];
   const usersSeries = metrics?.map((m) => (m.activeUsers == null ? null : Number(m.activeUsers))) ?? [];
   const burnSeries = metrics?.map((m) => (m.burnRate == null ? null : Number(m.burnRate))) ?? [];
-
+  
   const lastMetric = metrics && metrics.length > 0 ? metrics[metrics.length - 1] : null;
   const displayedMrr = lastMetric?.mrr ?? startup?.metricsSnapshot?.mrr ?? 0;
   const displayedUsers = lastMetric?.activeUsers ?? startup?.metricsSnapshot?.users ?? 0;
@@ -495,6 +503,7 @@ export default function StartupPage(): JSX.Element {
   const lastTimestamp = lastMetric?.date ?? startup?.updatedAt ?? startup?.createdAt ?? null;
 
   const isFounder = user && startup && (user.id === startup.founderId || user.id === startup.id || user.id === startup._id);
+  
   const isInvestor = user && user.role === 'investor';
 
   return (
@@ -684,6 +693,25 @@ export default function StartupPage(): JSX.Element {
               )}
             </div>
           </section>
+          <section className="mt-6">
+  <h3 className="text-lg font-medium">Оценка компании</h3>
+  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
+      <div className="text-xs text-gray-500 dark:text-gray-400">Valuation Pre-Money</div>
+      <div className="text-2xl font-semibold">
+        {lastMetric?.valuationPreMoney ?? startup?.metricsSnapshot?.valuationPreMoney ?? '—'}
+      </div>
+    </div>
+
+    <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
+      <div className="text-xs text-gray-500 dark:text-gray-400">Valuation Post-Money</div>
+      <div className="text-2xl font-semibold">
+        {lastMetric?.valuationPostMoney ?? startup?.metricsSnapshot?.valuationPostMoney ?? '—'}
+      </div>
+    </div>
+  </div>
+</section>
+
 
           {/* Files */}
           <section className="mt-6">

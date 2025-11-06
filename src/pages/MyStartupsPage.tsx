@@ -6,7 +6,12 @@ import { useAuth } from '../auth/AuthContext';
 
 const API = 'http://localhost:8080/api/startups';
 
-type MetricsSnapshot = { mrr?: number | null; users?: number | null };
+type MetricsSnapshot = { 
+  mrr?: number | null; 
+  users?: number | null; 
+  valuationPreMoney?: number | null; 
+};
+
 
 type Startup = {
   id?: string;
@@ -223,6 +228,7 @@ export default function MyStartupsPage(): JSX.Element {
                   <div className="text-right text-sm text-gray-600 dark:text-gray-400">
                     <div>MRR: <strong>{s.metricsSnapshot?.mrr ?? 0}</strong></div>
                     <div>Users: <strong>{s.metricsSnapshot?.users ?? 0}</strong></div>
+                    <div>Valuation: <strong>{s.metricsSnapshot?.valuationPreMoney ?? 0}</strong></div>
                     <div className="mt-2 text-xs">{formatDate(s.createdAt)}</div>
                   </div>
                 </div>
