@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState, JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, ExternalLink, BarChart2, FileText, Globe, Plus } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import './StartupsList.css'; 
+import '../components/StartupsList.css'; 
 
 const API = 'http://localhost:8080/api/startups';
 

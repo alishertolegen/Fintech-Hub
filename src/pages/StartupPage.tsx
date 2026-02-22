@@ -4,14 +4,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ExternalLink, BarChart2, FileText, Globe } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import './StartupPage.css';
-const API = 'http://localhost:8080/api/startups';
-const METRICS_API = 'http://localhost:8080/api/startup-metrics';
-const USERS_API = 'http://localhost:8080/api/users';
-const OFFERS_API = 'http://localhost:8080/api/offers';
+
+const API            = 'http://localhost:8080/api/startups';
+const METRICS_API    = 'http://localhost:8080/api/startup-metrics';
+const USERS_API      = 'http://localhost:8080/api/users';
+const OFFERS_API     = 'http://localhost:8080/api/offers';
 const INVESTMENTS_API = 'http://localhost:8080/api/investments';
 
-type MetricsSnapshot = { 
-  mrr?: number | null; 
+/* ── Types ─────────────────────────────────────────────────── */
+type MetricsSnapshot = {
+  mrr?: number | null;
   users?: number | null;
   valuationPreMoney?: number | null;
   valuationPostMoney?: number | null;
@@ -29,19 +31,12 @@ type MetricRecord = {
   other?: Record<string, any> | null;
 };
 
-
 type Startup = {
-  id?: string;
-  _id?: string;
-  name?: string;
-  slug?: string;
-  founderId?: string;
-  stage?: string;
-  industry?: string;
-  shortPitch?: string;
-  description?: string;
-  website?: string;
-  logoUrl?: string;
+  id?: string; _id?: string;
+  name?: string; slug?: string; founderId?: string;
+  stage?: string; industry?: string;
+  shortPitch?: string; description?: string;
+  website?: string; logoUrl?: string;
   metricsSnapshot?: MetricsSnapshot;
   attachments?: string[] | Array<{ url?: string; name?: string }>;
   createdAt?: string | number | Date;
@@ -51,324 +46,203 @@ type Startup = {
 };
 
 type User = {
-  id?: string;
-  _id?: string;
-  name?: string;
-  username?: string;
-  avatarUrl?: string;
-  role?: string;
+  id?: string; _id?: string;
+  name?: string; username?: string; avatarUrl?: string; role?: string;
 };
 
 type Offer = {
-  id?: string;
-  _id?: string;
-  startupId?: string;
-  investorId?: string;
-  title?: string;
-  amount?: number;
-  equityPercent?: number;
-  type?: string;
-  visibility?: string;
-  status?: string;
+  id?: string; _id?: string;
+  startupId?: string; investorId?: string;
+  title?: string; amount?: number; equityPercent?: number;
+  type?: string; visibility?: string; status?: string;
   attachments?: Array<{ url?: string; name?: string }>;
-  createdAt?: string | number | Date;
-  updatedAt?: string | number | Date;
+  createdAt?: string | number | Date; updatedAt?: string | number | Date;
   note?: string;
 };
 
 type Investment = {
-  id?: string;
-  _id?: string;
-  startupId?: string;
-  investorId?: string;
-  amount?: number;
-  currency?: string;
-  equityPercent?: number;
-  valuationPostMoney?: number;
-  status?: string;
-  createdAt?: string | number | Date;
-  updatedAt?: string | number | Date;
+  id?: string; _id?: string;
+  startupId?: string; investorId?: string;
+  amount?: number; currency?: string; equityPercent?: number;
+  valuationPostMoney?: number; status?: string;
+  createdAt?: string | number | Date; updatedAt?: string | number | Date;
   note?: string;
 };
 
+/* ── Helpers ────────────────────────────────────────────────── */
 function Logo({ name, url }: { name?: string; url?: string }) {
-  if (url) return <img src={url} alt={name} className="w-24 h-24 rounded-md object-cover" />;
-  const initials = (name || '')
-    .split(' ')
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-  return (
-    <div className="w-24 h-24 rounded-md bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-semibold text-xl">
-      {initials || 'S'}
-    </div>
-  );
+  if (url) return <img src={url} alt={name} className="logo-img-detail" />;
+  const initials = (name || '').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+  return <div className="logo-initials-detail">{initials || 'S'}</div>;
 }
 
 function formatDate(iso?: string | number | Date): string {
   if (!iso) return '';
-  try {
-    return new Date(iso).toLocaleString();
-  } catch (e) {
-    return String(iso);
-  }
+  try { return new Date(iso).toLocaleString('ru-RU'); } catch { return String(iso); }
 }
 
-/** Sparkline */
-function Sparkline({ data, width = 220, height = 48 }: { data: (number | null | undefined)[]; width?: number; height?: number }) {
-  const vals = data.map((v) => (v == null ? null : Number(v)));
-  const valid = vals.filter((v) => v != null) as number[];
-  if (valid.length === 0) {
-    return <div className="text-xs text-gray-500 dark:text-gray-400">нет данных</div>;
-  }
+function formatNum(n?: number | null): string {
+  if (n == null) return '—';
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)     return `$${(n / 1_000).toFixed(0)}K`;
+  return `$${n}`;
+}
 
-  const pad = 4;
-  const w = Math.max(40, width);
-  const h = Math.max(20, height);
-  const min = Math.min(...valid);
-  const max = Math.max(...valid);
-  const range = max === min ? 1 : max - min;
+/* ── Sparkline ──────────────────────────────────────────────── */
+function Sparkline({ data, width = 200, height = 44 }: { data: (number | null | undefined)[]; width?: number; height?: number }) {
+  const vals  = data.map((v) => (v == null ? null : Number(v)));
+  const valid = vals.filter((v) => v != null) as number[];
+  if (!valid.length) return <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>нет данных</span>;
+
+  const pad = 4, w = Math.max(40, width), h = Math.max(20, height);
+  const min = Math.min(...valid), max = Math.max(...valid), range = max === min ? 1 : max - min;
   const stepX = (w - pad * 2) / Math.max(1, vals.length - 1);
 
-  const points: [number, number][] = vals.map((v, i) => {
-    const x = pad + i * stepX;
-    const y = v == null ? h - pad : pad + (1 - (Number(v) - min) / range) * (h - pad * 2);
-    return [x, y];
-  });
+  const points: [number, number][] = vals.map((v, i) => [
+    pad + i * stepX,
+    v == null ? h - pad : pad + (1 - (v - min) / range) * (h - pad * 2),
+  ]);
 
   const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' ');
-  const lastValidIndex = [...vals].reverse().findIndex((v) => v != null);
-  const lastIndex = lastValidIndex === -1 ? 0 : vals.length - 1 - lastValidIndex;
-  const lastPoint = points[lastIndex];
+  const last  = points[[...vals].reverse().findIndex((v) => v != null) === -1 ? 0 : vals.length - 1 - [...vals].reverse().findIndex((v) => v != null)];
 
   return (
-    <svg width={w} height={h} className="block">
+    <svg width={w} height={h}>
       <defs>
-        <linearGradient id="grad" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="rgba(79,70,229,0.12)" />
-          <stop offset="100%" stopColor="rgba(79,70,229,0.00)" />
+        <linearGradient id="spk-grad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%"   stopColor="rgba(99,179,255,0.2)" />
+          <stop offset="100%" stopColor="rgba(99,179,255,0)" />
         </linearGradient>
       </defs>
-      <path d={`${pathD} L ${w - pad} ${h - pad} L ${pad} ${h - pad} Z`} fill="url(#grad)" stroke="none" />
-      <path d={pathD} fill="none" stroke="currentColor" strokeWidth={1.5} style={{ color: '#4f46e5' }} />
-      {lastPoint && <circle cx={lastPoint[0]} cy={lastPoint[1]} r={2.5} fill="#4f46e5" />}
+      <path d={`${pathD} L ${w - pad} ${h - pad} L ${pad} ${h - pad} Z`} fill="url(#spk-grad)" />
+      <path d={pathD} fill="none" stroke="var(--accent)" strokeWidth={1.5} />
+      {last && <circle cx={last[0]} cy={last[1]} r={3} fill="var(--accent)" />}
     </svg>
   );
 }
 
+/* ── Component ──────────────────────────────────────────────── */
 export default function StartupPage(): JSX.Element {
-  const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
+  const { slug }    = useParams<{ slug: string }>();
+  const navigate    = useNavigate();
   const { user, token } = useAuth();
-  const [startup, setStartup] = useState<Startup | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const [startup,  setStartup]  = useState<Startup | null>(null);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Metrics
-  const [metrics, setMetrics] = useState<MetricRecord[] | null>(null);
+  const [metrics,        setMetrics]        = useState<MetricRecord[] | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
-  const [metricsError, setMetricsError] = useState<string | null>(null);
+  const [metricsError,   setMetricsError]   = useState<string | null>(null);
 
-  // Founder
-  const [founder, setFounder] = useState<User | null>(null);
+  const [founder,        setFounder]        = useState<User | null>(null);
   const [founderLoading, setFounderLoading] = useState(false);
-  const [founderError, setFounderError] = useState<string | null>(null);
+  const [founderError,   setFounderError]   = useState<string | null>(null);
 
-  // Offers & investments
-  const [offers, setOffers] = useState<Offer[] | null>(null);
+  const [offers,        setOffers]        = useState<Offer[] | null>(null);
   const [offersLoading, setOffersLoading] = useState(false);
-  const [offersError, setOffersError] = useState<string | null>(null);
+  const [offersError,   setOffersError]   = useState<string | null>(null);
 
-  const [investments, setInvestments] = useState<Investment[] | null>(null);
+  const [investments,        setInvestments]        = useState<Investment[] | null>(null);
   const [investmentsLoading, setInvestmentsLoading] = useState(false);
-  const [investmentsError, setInvestmentsError] = useState<string | null>(null);
+  const [investmentsError,   setInvestmentsError]   = useState<string | null>(null);
 
-  // Make offer form
-  const [makingOffer, setMakingOffer] = useState(false);
-  const [offerTitle, setOfferTitle] = useState('');
-  const [offerAmount, setOfferAmount] = useState<number | ''>('');
-  const [offerEquity, setOfferEquity] = useState<number | ''>('');
-  const [offerVisibility, setOfferVisibility] = useState<'private' | 'public'>('private');
-  const [offerSubmitting, setOfferSubmitting] = useState(false);
+  const [makingOffer,      setMakingOffer]      = useState(false);
+  const [offerTitle,       setOfferTitle]       = useState('');
+  const [offerAmount,      setOfferAmount]      = useState<number | ''>('');
+  const [offerVisibility,  setOfferVisibility]  = useState<'private' | 'public'>('private');
+  const [offerSubmitting,  setOfferSubmitting]  = useState(false);
 
-  // Make investment (simple)
-  const [investAmount, setInvestAmount] = useState<number | ''>('');
-  const [investEquity, setInvestEquity] = useState<number | ''>('');
-  const [investSubmitting, setInvestSubmitting] = useState(false);
-
+  /* ── Fetch startup ── */
   useEffect(() => {
     if (!slug) return;
     let canceled = false;
     (async () => {
-      setLoading(true);
-      setError(null);
+      setLoading(true); setError(null);
       try {
         const res = await fetch(`${API}/${encodeURIComponent(slug)}`, { credentials: 'include' });
-        if (res.status === 404) {
-          throw new Error('Стартап не найден');
-        }
-        if (!res.ok) {
-          const txt = await res.text();
-          let msg = `Ошибка ${res.status}`;
-          try {
-            const json = JSON.parse(txt);
-            msg = json.error ?? json.message ?? msg;
-          } catch {}
-          throw new Error(msg);
-        }
-        const data = (await res.json()) as Startup;
-        if (!canceled) setStartup(data);
-      } catch (e: any) {
-        if (!canceled) setError(e.message ?? 'Не удалось загрузить стартап');
-      } finally {
-        if (!canceled) setLoading(false);
-      }
+        if (res.status === 404) throw new Error('Стартап не найден');
+        if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error ?? j.message ?? `Ошибка ${res.status}`); }
+        if (!canceled) setStartup(await res.json());
+      } catch (e: any) { if (!canceled) setError(e.message); }
+      finally          { if (!canceled) setLoading(false); }
     })();
-    return () => {
-      canceled = true;
-    };
+    return () => { canceled = true; };
   }, [slug]);
 
-  // metrics
+  /* ── Fetch metrics ── */
   useEffect(() => {
     if (!startup) return;
-    const id = startup.id ?? startup._id ?? startup.slug;
-    if (!id) return;
+    const id = startup.id ?? startup._id ?? startup.slug; if (!id) return;
     let canceled = false;
     (async () => {
-      setMetricsLoading(true);
-      setMetricsError(null);
+      setMetricsLoading(true); setMetricsError(null);
       try {
-        const url = `${METRICS_API}?startupId=${encodeURIComponent(String(id))}`;
-        const res = await fetch(url, { credentials: 'include' });
-        if (!res.ok) {
-          const txt = await res.text();
-          let msg = `Ошибка ${res.status}`;
-          try {
-            const json = JSON.parse(txt);
-            msg = json.error ?? json.message ?? msg;
-          } catch {}
-          throw new Error(msg);
-        }
-        const data = (await res.json()) as MetricRecord[] | { data?: MetricRecord[] };
-        const arr = Array.isArray(data) ? data : (Array.isArray((data as any).data) ? (data as any).data : []);
+        const res = await fetch(`${METRICS_API}?startupId=${encodeURIComponent(String(id))}`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`Ошибка ${res.status}`);
+        const raw = await res.json();
+        const arr = Array.isArray(raw) ? raw : (raw?.data ?? []);
         const normalized = arr
-          .map((m: { date: any }) => ({
-            ...m,
-            date: m.date ?? (m as any).timestamp ?? (m as any).createdAt ?? null,
-          }))
-          .filter((m: { date: null }) => m.date != null)
-          .sort((a: { date: any }, b: { date: any }) => new Date(String(a.date)).getTime() - new Date(String(b.date)).getTime());
+          .map((m: any) => ({ ...m, date: m.date ?? m.timestamp ?? m.createdAt ?? null }))
+          .filter((m: any) => m.date != null)
+          .sort((a: any, b: any) => new Date(String(a.date)).getTime() - new Date(String(b.date)).getTime());
         if (!canceled) setMetrics(normalized);
-      } catch (e: any) {
-        if (!canceled) setMetricsError(e.message ?? 'Не удалось загрузить метрики');
-      } finally {
-        if (!canceled) setMetricsLoading(false);
-      }
+      } catch (e: any) { if (!canceled) setMetricsError(e.message); }
+      finally          { if (!canceled) setMetricsLoading(false); }
     })();
-    return () => {
-      canceled = true;
-    };
+    return () => { canceled = true; };
   }, [startup]);
 
-  // founder
+  /* ── Fetch founder ── */
   useEffect(() => {
-    const founderId = startup?.founderId;
-    if (!founderId) {
-      setFounder(null);
-      return;
-    }
+    if (!startup?.founderId) { setFounder(null); return; }
     let canceled = false;
     (async () => {
-      setFounderLoading(true);
-      setFounderError(null);
+      setFounderLoading(true); setFounderError(null);
       try {
-        const res = await fetch(`${USERS_API}/${encodeURIComponent(String(founderId))}`, { credentials: 'include' });
-        if (res.status === 404) throw new Error('Автор не найден');
-        if (!res.ok) {
-          const txt = await res.text();
-          let msg = `Ошибка ${res.status}`;
-          try {
-            const json = JSON.parse(txt);
-            msg = json.error ?? json.message ?? msg;
-          } catch {}
-          throw new Error(msg);
-        }
-        const data = (await res.json()) as User;
-        if (!canceled) setFounder(data);
-      } catch (e: any) {
-        if (!canceled) setFounderError(e.message ?? 'Не удалось загрузить автора');
-      } finally {
-        if (!canceled) setFounderLoading(false);
-      }
+        const res = await fetch(`${USERS_API}/${encodeURIComponent(String(startup.founderId))}`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Автор не найден');
+        if (!canceled) setFounder(await res.json());
+      } catch (e: any) { if (!canceled) setFounderError(e.message); }
+      finally          { if (!canceled) setFounderLoading(false); }
     })();
-    return () => {
-      canceled = true;
-    };
+    return () => { canceled = true; };
   }, [startup?.founderId]);
 
-  // offers
+  const idForApi = () => startup?.id ?? startup?._id ?? startup?.slug;
+
+  /* ── Offers & investments loaders ── */
   const loadOffers = async () => {
     if (!startup) return;
-    const id = startup.id ?? startup._id ?? startup.slug;
-    if (!id) return;
-    setOffersLoading(true);
-    setOffersError(null);
+    const id = idForApi(); if (!id) return;
+    setOffersLoading(true); setOffersError(null);
     try {
       const res = await fetch(`${OFFERS_API}?startupId=${encodeURIComponent(String(id))}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
-      if (!res.ok) {
-        const txt = await res.text();
-        let msg = `Ошибка ${res.status}`;
-        try {
-          const json = JSON.parse(txt);
-          msg = json.error ?? json.message ?? msg;
-        } catch {}
-        throw new Error(msg);
-      }
-      const data = (await res.json()) as Offer[];
-      setOffers(Array.isArray(data) ? data : (data as any).data ?? []);
-    } catch (e: any) {
-      setOffersError(e.message ?? 'Не удалось загрузить офферы');
-    } finally {
-      setOffersLoading(false);
-    }
+      if (!res.ok) throw new Error(`Ошибка ${res.status}`);
+      const data = await res.json();
+      setOffers(Array.isArray(data) ? data : (data?.data ?? []));
+    } catch (e: any) { setOffersError(e.message); }
+    finally          { setOffersLoading(false); }
   };
 
-  // investments
   const loadInvestments = async () => {
     if (!startup) return;
-    const id = startup.id ?? startup._id ?? startup.slug;
-    if (!id) return;
-    setInvestmentsLoading(true);
-    setInvestmentsError(null);
+    const id = idForApi(); if (!id) return;
+    setInvestmentsLoading(true); setInvestmentsError(null);
     try {
-      // controller had: GET /api/investments/startup/{startupId}
       const res = await fetch(`${INVESTMENTS_API}/startup/${encodeURIComponent(String(id))}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
-      if (!res.ok) {
-        const txt = await res.text();
-        let msg = `Ошибка ${res.status}`;
-        try {
-          const json = JSON.parse(txt);
-          msg = json.error ?? json.message ?? msg;
-        } catch {}
-        throw new Error(msg);
-      }
-      const data = (await res.json()) as Investment[];
-      setInvestments(Array.isArray(data) ? data : (data as any).data ?? []);
-    } catch (e: any) {
-      setInvestmentsError(e.message ?? 'Не удалось загрузить инвестиции');
-    } finally {
-      setInvestmentsLoading(false);
-    }
+      if (!res.ok) throw new Error(`Ошибка ${res.status}`);
+      const data = await res.json();
+      setInvestments(Array.isArray(data) ? data : (data?.data ?? []));
+    } catch (e: any) { setInvestmentsError(e.message); }
+    finally          { setInvestmentsLoading(false); }
   };
 
-  // load offers & investments when startup loaded
   useEffect(() => {
     if (!startup) return;
     loadOffers();
@@ -376,447 +250,314 @@ export default function StartupPage(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startup]);
 
-  const idForApi = () => startup?.id ?? startup?._id ?? startup?.slug;
+  /* ── Derived ── */
+  const mrrSeries   = metrics?.map((m) => m.mrr        == null ? null : Number(m.mrr))        ?? [];
+  const usersSeries = metrics?.map((m) => m.activeUsers == null ? null : Number(m.activeUsers)) ?? [];
+  const burnSeries  = metrics?.map((m) => m.burnRate    == null ? null : Number(m.burnRate))   ?? [];
 
+  const lastMetric     = metrics && metrics.length > 0 ? metrics[metrics.length - 1] : null;
+  const displayedMrr   = lastMetric?.mrr        ?? startup?.metricsSnapshot?.mrr   ?? 0;
+  const displayedUsers = lastMetric?.activeUsers ?? startup?.metricsSnapshot?.users ?? 0;
+  const displayedBurn  = lastMetric?.burnRate    ?? null;
+  const lastTimestamp  = lastMetric?.date        ?? startup?.updatedAt ?? startup?.createdAt ?? null;
+
+  const isFounder  = user && startup && user.id === startup.founderId;
+  const isInvestor = user?.role === 'investor';
+
+  const valuationMode = startup?.valuationMode ?? 'pre';
+  const currentPre    = lastMetric?.valuationPreMoney  ?? startup?.metricsSnapshot?.valuationPreMoney  ?? 0;
+  const currentPost   = lastMetric?.valuationPostMoney ?? startup?.metricsSnapshot?.valuationPostMoney ?? 0;
+
+  const calculatedEquity =
+    offerAmount && Number(offerAmount) > 0
+      ? valuationMode === 'pre'
+        ? (Number(offerAmount) / (currentPre + Number(offerAmount))) * 100
+        : currentPost > 0 ? (Number(offerAmount) / currentPost) * 100 : 0
+      : 0;
+
+  /* ── Actions ── */
   async function handleDelete() {
-    if (!startup) return;
-    if (!window.confirm('Вы уверены, что хотите удалить этот стартап? Это действие нельзя отменить.')) return;
-    const id = idForApi();
-    if (!id) {
-      alert('Не найден идентификатор для удаления');
-      return;
-    }
+    if (!startup || !window.confirm('Удалить стартап? Это нельзя отменить.')) return;
+    const id = idForApi(); if (!id) return;
+    setDeleting(true);
     try {
-      setDeleting(true);
-      const res = await fetch(`${API}/${encodeURIComponent(String(id))}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (res.status === 204 || res.ok) {
-        navigate('/startups');
-      } else {
-        const txt = await res.text();
-        let msg = `Ошибка ${res.status}`;
-        try {
-          const json = JSON.parse(txt);
-          msg = json.error ?? json.message ?? msg;
-        } catch {}
-        throw new Error(msg);
-      }
-    } catch (e: any) {
-      alert('Не удалось удалить: ' + (e.message ?? e));
-    } finally {
-      setDeleting(false);
-    }
+      const res = await fetch(`${API}/${encodeURIComponent(String(id))}`, { method: 'DELETE', credentials: 'include' });
+      if (res.ok || res.status === 204) { navigate('/startups'); return; }
+      throw new Error(`Ошибка ${res.status}`);
+    } catch (e: any) { alert('Не удалось удалить: ' + e.message); }
+    finally           { setDeleting(false); }
   }
 
-  // create offer (investor)
   const submitOffer = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!startup || !user) {
-      alert('Нужна авторизация и стартап');
-      return;
-    }
+    if (!startup || !user) { alert('Нужна авторизация'); return; }
     setOfferSubmitting(true);
     try {
-      const payload = {
-        startupId: idForApi(),
-        investorId: user.id,
-        title: offerTitle,
-        amount: Number(offerAmount),
-        equityPercent: Number(calculatedEquity.toFixed(4)),
-        type: 'term-sheet',
-        visibility: offerVisibility,
-        status: 'sent',
-        attachments: [],
-      };
       const res = await fetch(OFFERS_API, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          startupId: idForApi(), investorId: user.id,
+          title: offerTitle, amount: Number(offerAmount),
+          equityPercent: Number(calculatedEquity.toFixed(4)),
+          type: 'term-sheet', visibility: offerVisibility, status: 'sent', attachments: [],
+        }),
       });
-      if (!res.ok) {
-        const txt = await res.text();
-        let msg = `Ошибка ${res.status}`;
-        try {
-          const json = JSON.parse(txt);
-          msg = json.error ?? json.message ?? msg;
-        } catch {}
-        throw new Error(msg);
-      }
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.message ?? `Ошибка ${res.status}`); }
       await loadOffers();
-      setMakingOffer(false);
-      setOfferTitle('');
-      setOfferAmount('');
-      setOfferEquity('');
-    } catch (e: any) {
-      alert('Не удалось создать offer: ' + (e.message ?? e));
-    } finally {
-      setOfferSubmitting(false);
-    }
+      setMakingOffer(false); setOfferTitle(''); setOfferAmount('');
+    } catch (e: any) { alert('Не удалось создать оффер: ' + e.message); }
+    finally           { setOfferSubmitting(false); }
   };
 
-  // update offer status (founder)
   const updateOfferStatus = async (offerId: string, status: string, note?: string) => {
-    if (!offerId) return;
     try {
       const res = await fetch(`${OFFERS_API}/${encodeURIComponent(offerId)}/status`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ status, note }),
       });
-      if (!res.ok) {
-        const txt = await res.text();
-        let msg = `Ошибка ${res.status}`;
-        try {
-          const json = JSON.parse(txt);
-          msg = json.error ?? json.message ?? msg;
-        } catch {}
-        throw new Error(msg);
-      }
+      if (!res.ok) throw new Error(`Ошибка ${res.status}`);
       await loadOffers();
-      // optionally reload investments if accepted -> might create investment on backend
       await loadInvestments();
-    } catch (e: any) {
-      alert('Не удалось обновить статус: ' + (e.message ?? e));
-    }
+    } catch (e: any) { alert('Не удалось обновить статус: ' + e.message); }
   };
-  
-  // series for sparkline
-  const mrrSeries = metrics?.map((m) => (m.mrr == null ? null : Number(m.mrr))) ?? [];
-  const usersSeries = metrics?.map((m) => (m.activeUsers == null ? null : Number(m.activeUsers))) ?? [];
-  const burnSeries = metrics?.map((m) => (m.burnRate == null ? null : Number(m.burnRate))) ?? [];
-  
-  const lastMetric = metrics && metrics.length > 0 ? metrics[metrics.length - 1] : null;
-  const displayedMrr = lastMetric?.mrr ?? startup?.metricsSnapshot?.mrr ?? 0;
-  const displayedUsers = lastMetric?.activeUsers ?? startup?.metricsSnapshot?.users ?? 0;
-  const displayedBurn = lastMetric?.burnRate ?? null;
-  const lastTimestamp = lastMetric?.date ?? startup?.updatedAt ?? startup?.createdAt ?? null;
 
-  const isFounder = user && startup && (user.id === startup.founderId || user.id === startup.id || user.id === startup._id);
-  
-  const isInvestor = user && user.role === 'investor';
+  /* ── Render ── */
+  return (
+    <div className="startup-page-container">
+      {loading  && <div className="page-loading">Загрузка стартапа…</div>}
+      {error    && <div className="page-error">Ошибка: {error}</div>}
+      {!loading && !error && !startup && <div className="page-not-found">Стартап не найден</div>}
 
-  const valuationMode = startup?.valuationMode ?? 'pre';
+      {startup && (
+        <article className="startup-detail-card">
 
-const currentPre =
-  lastMetric?.valuationPreMoney ??
-  startup?.metricsSnapshot?.valuationPreMoney ??
-  0;
-
-const currentPost =
-  lastMetric?.valuationPostMoney ??
-  startup?.metricsSnapshot?.valuationPostMoney ??
-  0;
-
-const calculatedEquity =
-  offerAmount && Number(offerAmount) > 0
-    ? valuationMode === 'pre'
-      ? (Number(offerAmount) / (currentPre + Number(offerAmount))) * 100
-      : currentPost > 0
-        ? (Number(offerAmount) / currentPost) * 100
-        : 0
-    : 0;
-return (
-  <div className="startup-page-container">
-    {loading && <div className="page-loading">Загрузка...</div>}
-    {error && <div className="page-error">Ошибка: {error}</div>}
-    {!loading && !error && !startup && (
-      <div className="page-not-found">Стартап не найден</div>
-    )}
-
-    {startup && (
-      <article className="startup-detail-card">
-        {/* HEADER */}
-        <header className="startup-detail-header">
-          <div className="detail-logo">
-            <Logo name={startup.name} url={startup.logoUrl} />
-          </div>
-          
-          <div className="detail-info">
-            <h1 className="detail-title">
-              {startup.name}
-              <span className="detail-stage-badge">{startup.stage ?? '—'}</span>
-              <span className="detail-industry">{startup.industry}</span>
-            </h1>
-            
-            {startup.shortPitch && (
-              <p className="detail-pitch">{startup.shortPitch}</p>
-            )}
-
-            {/* FOUNDER */}
-            {startup.founderId && (
-              <div className="founder-section">
-                {founderLoading ? (
-                  <div className="empty-message">Загрузка автора...</div>
-                ) : founderError ? (
-                  <div className="chart-error">{founderError}</div>
-                ) : founder ? (
-                  <button
-                    onClick={() => navigate(`/users/${encodeURIComponent(String(founder.id ?? founder._id ?? startup.founderId))}`)}
-                    className="founder-button"
-                  >
-                    {founder.avatarUrl ? (
-                      <img src={founder.avatarUrl} alt={founder.name} className="founder-avatar" />
-                    ) : (
-                      <div className="founder-avatar-initials">
-                        {(founder.name || founder.username || '').split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase() || 'U'}
-                      </div>
-                    )}
-                    <span>{founder.name ?? founder.username ?? 'Профиль автора'}</span>
-                  </button>
-                ) : (
-                  <div className="empty-message">Автор: {startup.founderId}</div>
-                )}
-              </div>
-            )}
-
-            {/* META INFO */}
-            <div className="detail-meta">
-              {startup.website && (() => {
-                try {
-                  return (
-                    <a href={startup.website} target="_blank" rel="noreferrer" className="meta-link">
-                      <Globe size={16} /> {new URL(String(startup.website)).hostname}
-                    </a>
-                  );
-                } catch { return null; }
-              })()}
-              
-              <div className="meta-item">
-                <BarChart2 size={16} /> MRR: <strong>{displayedMrr}</strong>
-              </div>
-              
-              <div className="meta-item">
-                <FileText size={16} /> Files: <strong>{Array.isArray(startup.attachments) ? startup.attachments.length : 0}</strong>
-              </div>
-            </div>
-          </div>
-
-          {/* DATES */}
-          <div className="detail-dates">
-            <div className="date-label">Создано</div>
-            <div className="date-value">{formatDate(startup.createdAt)}</div>
-            <div className="date-label">Обновлено</div>
-            <div className="date-value">{formatDate(startup.updatedAt)}</div>
-          </div>
-        </header>
-
-        {/* DESCRIPTION */}
-        <section className="content-section">
-          <h3 className="section-title">Описание</h3>
-          <p className="section-description">{startup.description ?? '—'}</p>
-        </section>
-
-        {/* METRICS */}
-        <section className="content-section">
-          <h3 className="section-title">Метрики</h3>
-          <div className="metrics-grid">
-            <div className="metric-card">
-              <div className="metric-header">
-                <div className="metric-info">
-                  <div className="metric-label">MRR (последнее)</div>
-                  <div className="metric-value">{displayedMrr}</div>
-                  <div className="metric-timestamp">{lastTimestamp ? formatDate(lastTimestamp) : ''}</div>
-                </div>
-                <div className="metric-chart">
-                  {metricsLoading ? (
-                    <div className="chart-loading">Загрузка...</div>
-                  ) : metricsError ? (
-                    <div className="chart-error">{metricsError}</div>
-                  ) : (
-                    <Sparkline data={mrrSeries} />
-                  )}
-                </div>
-              </div>
+          {/* ═══ HEADER ═══ */}
+          <header className="startup-detail-header">
+            <div className="detail-logo">
+              <Logo name={startup.name} url={startup.logoUrl} />
             </div>
 
-            <div className="metric-card">
-              <div className="metric-header">
-                <div className="metric-info">
-                  <div className="metric-label">Active Users</div>
-                  <div className="metric-value">{displayedUsers}</div>
-                  <div className="metric-timestamp">{lastTimestamp ? formatDate(lastTimestamp) : ''}</div>
-                </div>
-                <div className="metric-chart">
-                  {metricsLoading ? (
-                    <div className="chart-loading">Загрузка...</div>
-                  ) : metricsError ? (
-                    <div className="chart-error">{metricsError}</div>
-                  ) : (
-                    <Sparkline data={usersSeries} />
-                  )}
-                </div>
-              </div>
-            </div>
+            <div className="detail-info">
+              <h1 className="detail-title">
+                {startup.name}
+                {startup.stage    && <span className="detail-stage-badge">{startup.stage}</span>}
+                {startup.industry && <span className="detail-industry">{startup.industry}</span>}
+              </h1>
 
-            <div className="metric-card">
-              <div className="metric-header">
-                <div className="metric-info">
-                  <div className="metric-label">Burn Rate</div>
-                  <div className="metric-value">{displayedBurn != null ? displayedBurn : '—'}</div>
-                  <div className="metric-timestamp">{lastTimestamp ? formatDate(lastTimestamp) : ''}</div>
-                </div>
-                <div className="metric-chart">
-                  {metricsLoading ? (
-                    <div className="chart-loading">Загрузка...</div>
-                  ) : metricsError ? (
-                    <div className="chart-error">{metricsError}</div>
-                  ) : (
-                    <Sparkline data={burnSeries} />
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+              {startup.shortPitch && <p className="detail-pitch">{startup.shortPitch}</p>}
 
-          {/* METRICS HISTORY */}
-          <div className="metrics-history">
-            <h4 className="history-title">История</h4>
-            {metricsLoading && <div className="empty-message">Загрузка метрик...</div>}
-            {metricsError && <div className="chart-error">{metricsError}</div>}
-            {!metricsLoading && (!metrics || metrics.length === 0) && (
-              <div className="empty-message">История метрик отсутствует.</div>
-            )}
-            {!metricsLoading && metrics && metrics.length > 0 && (
-              <div className="history-table-wrapper">
-                <table className="history-table">
-                  <thead>
-                    <tr>
-                      <th>Дата</th>
-                      <th>MRR</th>
-                      <th>Active Users</th>
-                      <th>Burn Rate</th>
-                      <th>Other</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {metrics.slice().reverse().map((m, i) => (
-                      <tr key={m._id ?? i}>
-                        <td>{formatDate(m.date)}</td>
-                        <td>{m.mrr ?? '—'}</td>
-                        <td>{m.activeUsers ?? '—'}</td>
-                        <td>{m.burnRate ?? '—'}</td>
-                        <td>{m.other ? JSON.stringify(m.other) : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* VALUATION */}
-        <section className="content-section">
-          <h3 className="section-title">Оценка компании</h3>
-          <div className="valuation-mode-badge">
-  Mode: {startup.valuationMode?.toUpperCase()}
-</div>
-          <div className="valuation-grid">
-            <div className="valuation-card">
-              <div className="valuation-label">Valuation Pre-Money</div>
-              <div className="valuation-value">
-                {lastMetric?.valuationPreMoney ?? startup?.metricsSnapshot?.valuationPreMoney ?? '—'}
-              </div>
-            </div>
-            <div className="valuation-card">
-              <div className="valuation-label">Valuation Post-Money</div>
-              <div className="valuation-value">
-                {lastMetric?.valuationPostMoney ?? startup?.metricsSnapshot?.valuationPostMoney ?? '—'}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* FILES */}
-        <section className="content-section">
-          <h3 className="section-title">Дополнительные файлы</h3>
-          {Array.isArray(startup.attachments) && startup.attachments.length > 0 ? (
-            <div className="files-list">
-              {startup.attachments.map((a: any, i: number) => {
-                const href = String(a?.url ?? a);
-                const name = (a?.name as string) ?? href.split('/').pop() ?? `file-${i + 1}`;
-                return (
-                  <div key={i} className="file-item">
-                    <a href={href} target="_blank" rel="noreferrer" className="file-link">
-                      <FileText size={16} /> {name}
-                    </a>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="empty-message">Файлы не добавлены</div>
-          )}
-        </section>
-
-        {/* OFFERS */}
-        <section className="content-section">
-          <div className="dual-section">
-            <div className="offers-card">
-              <div className="card-header">
-                <h3 className="card-title">Офферы</h3>
-                {isInvestor && (
-                  <button onClick={() => setMakingOffer(v => !v)} className="btn-make-offer">
-                    {makingOffer ? 'Отмена' : 'Сделать offer'}
-                  </button>
-                )}
-              </div>
-
-              {makingOffer && isInvestor && (
-                <form onSubmit={submitOffer} className="offer-form">
-                  <input
-                    placeholder="Заголовок оффера"
-                    value={offerTitle}
-                    onChange={(e) => setOfferTitle(e.target.value)}
-                    className="form-input"
-                    required
-                  />
-<div className="form-row">
-  <input
-    placeholder="Сумма (USD)"
-    type="number"
-    value={offerAmount}
-    onChange={(e) =>
-      setOfferAmount(e.target.value === '' ? '' : Number(e.target.value))
-    }
-    className="form-input"
-    required
-  />
-
-  <div className="equity-preview">
-    {offerAmount ? (
-      <span>
-        ≈ {calculatedEquity.toFixed(2)}%
-      </span>
-    ) : (
-      <span>—</span>
-    )}
-  </div>
-</div>
-                  <div className="form-footer">
-                    <label className="form-label">Видимость:</label>
-                    <select value={offerVisibility} onChange={(e) => setOfferVisibility(e.target.value as any)} className="form-select">
-                      <option value="private">private</option>
-                      <option value="public">public</option>
-                    </select>
-                    <button type="submit" disabled={offerSubmitting} className="btn-submit">
-                      {offerSubmitting ? 'Отправка...' : 'Отправить'}
+              {startup.founderId && (
+                <div className="founder-section">
+                  {founderLoading ? (
+                    <span className="empty-message">Загрузка автора…</span>
+                  ) : founderError ? (
+                    <span className="chart-error">{founderError}</span>
+                  ) : founder ? (
+                    <button
+                      className="founder-button"
+                      onClick={() => navigate(`/users/${encodeURIComponent(String(founder.id ?? founder._id ?? startup.founderId))}`)}
+                    >
+                      {founder.avatarUrl
+                        ? <img src={founder.avatarUrl} alt={founder.name} className="founder-avatar" />
+                        : <div className="founder-avatar-initials">
+                            {(founder.name || founder.username || '').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase() || 'U'}
+                          </div>
+                      }
+                      <span>{founder.name ?? founder.username ?? 'Профиль автора'}</span>
                     </button>
-                  </div>
-                </form>
+                  ) : (
+                    <span className="empty-message">Автор: {startup.founderId}</span>
+                  )}
+                </div>
               )}
 
-              <div>
+              <div className="detail-meta">
+                {startup.website && (() => {
+                  try {
+                    return (
+                      <a href={startup.website} target="_blank" rel="noreferrer" className="meta-link">
+                        <Globe size={15} /> {new URL(String(startup.website)).hostname}
+                      </a>
+                    );
+                  } catch { return null; }
+                })()}
+                <div className="meta-item"><BarChart2 size={15} /> MRR: <strong>{formatNum(displayedMrr as any)}</strong></div>
+                <div className="meta-item"><FileText size={15} /> Files: <strong>{Array.isArray(startup.attachments) ? startup.attachments.length : 0}</strong></div>
+              </div>
+            </div>
+
+            <div className="detail-dates">
+              <div className="date-label">Создано</div>
+              <div className="date-value">{formatDate(startup.createdAt)}</div>
+              <div className="date-label">Обновлено</div>
+              <div className="date-value">{formatDate(startup.updatedAt)}</div>
+            </div>
+          </header>
+
+          {/* ═══ DESCRIPTION ═══ */}
+          <section className="content-section">
+            <h3 className="section-title">Описание</h3>
+            <p className="section-description">{startup.description ?? '—'}</p>
+          </section>
+
+          {/* ═══ METRICS ═══ */}
+          <section className="content-section">
+            <h3 className="section-title">Метрики</h3>
+
+            <div className="metrics-grid">
+              {[
+                { label: 'MRR',          value: formatNum(displayedMrr as any),         series: mrrSeries },
+                { label: 'Active Users', value: String(displayedUsers ?? '—'),           series: usersSeries },
+                { label: 'Burn Rate',    value: displayedBurn != null ? formatNum(displayedBurn) : '—', series: burnSeries },
+              ].map(({ label, value, series }) => (
+                <div key={label} className="metric-card">
+                  <div className="metric-header">
+                    <div className="metric-info">
+                      <div className="metric-label">{label}</div>
+                      <div className="metric-value">{value}</div>
+                      {lastTimestamp && <div className="metric-timestamp">{formatDate(lastTimestamp)}</div>}
+                    </div>
+                    <div className="metric-chart">
+                      {metricsLoading ? (
+                        <span className="chart-loading">Загрузка…</span>
+                      ) : metricsError ? (
+                        <span className="chart-error">{metricsError}</span>
+                      ) : (
+                        <Sparkline data={series} />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* History table */}
+            <div className="metrics-history">
+              <h4 className="history-title">История</h4>
+              {metricsLoading && <div className="empty-message">Загрузка метрик…</div>}
+              {metricsError   && <div className="chart-error">{metricsError}</div>}
+              {!metricsLoading && (!metrics || metrics.length === 0) && (
+                <div className="empty-message">История метрик отсутствует.</div>
+              )}
+              {!metricsLoading && metrics && metrics.length > 0 && (
+                <div className="history-table-wrapper">
+                  <table className="history-table">
+                    <thead>
+                      <tr>
+                        <th>Дата</th><th>MRR</th><th>Active Users</th><th>Burn Rate</th><th>Other</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {metrics.slice().reverse().map((m, i) => (
+                        <tr key={m._id ?? i}>
+                          <td>{formatDate(m.date)}</td>
+                          <td>{m.mrr        ?? '—'}</td>
+                          <td>{m.activeUsers ?? '—'}</td>
+                          <td>{m.burnRate    ?? '—'}</td>
+                          <td>{m.other ? JSON.stringify(m.other) : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* ═══ VALUATION ═══ */}
+          <section className="content-section">
+            <h3 className="section-title">Оценка компании</h3>
+            <div className="valuation-mode-badge">Mode: {(startup.valuationMode ?? 'pre').toUpperCase()}</div>
+            <div className="valuation-grid">
+              <div className="valuation-card">
+                <div className="valuation-label">Pre-Money Valuation</div>
+                <div className="valuation-value">{formatNum(lastMetric?.valuationPreMoney ?? startup?.metricsSnapshot?.valuationPreMoney)}</div>
+              </div>
+              <div className="valuation-card">
+                <div className="valuation-label">Post-Money Valuation</div>
+                <div className="valuation-value">{formatNum(lastMetric?.valuationPostMoney ?? startup?.metricsSnapshot?.valuationPostMoney)}</div>
+              </div>
+            </div>
+          </section>
+
+          {/* ═══ FILES ═══ */}
+          <section className="content-section">
+            <h3 className="section-title">Дополнительные файлы</h3>
+            {Array.isArray(startup.attachments) && startup.attachments.length > 0 ? (
+              <div className="files-list">
+                {startup.attachments.map((a: any, i: number) => {
+                  const href = String(a?.url ?? a);
+                  const name = (a?.name as string) ?? href.split('/').pop() ?? `file-${i + 1}`;
+                  return (
+                    <div key={i} className="file-item">
+                      <a href={href} target="_blank" rel="noreferrer" className="file-link">
+                        <FileText size={15} /> {name}
+                      </a>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="empty-message">Файлы не добавлены</div>
+            )}
+          </section>
+
+          {/* ═══ OFFERS ═══ */}
+          <section className="content-section">
+            <div className="dual-section">
+              <div className="offers-card">
+                <div className="card-header">
+                  <h3 className="card-title section-title" style={{ flex: 1 }}>Офферы</h3>
+                  {isInvestor && (
+                    <button onClick={() => setMakingOffer((v) => !v)} className="btn-make-offer">
+                      {makingOffer ? 'Отмена' : '+ Сделать оффер'}
+                    </button>
+                  )}
+                </div>
+
+                {makingOffer && isInvestor && (
+                  <form onSubmit={submitOffer} className="offer-form">
+                    <input
+                      className="form-input"
+                      placeholder="Заголовок оффера"
+                      value={offerTitle}
+                      onChange={(e) => setOfferTitle(e.target.value)}
+                      required
+                    />
+                    <div className="form-row">
+                      <input
+                        className="form-input"
+                        type="number"
+                        placeholder="Сумма (USD)"
+                        value={offerAmount}
+                        onChange={(e) => setOfferAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                        required
+                      />
+                      <div className="equity-preview">
+                        {offerAmount ? `≈ ${calculatedEquity.toFixed(2)}%` : '—'}
+                      </div>
+                    </div>
+                    <div className="form-footer">
+                      <span className="form-label">Видимость:</span>
+                      <select
+                        className="form-select"
+                        value={offerVisibility}
+                        onChange={(e) => setOfferVisibility(e.target.value as any)}
+                      >
+                        <option value="private">private</option>
+                        <option value="public">public</option>
+                      </select>
+                      <button type="submit" className="btn-submit" disabled={offerSubmitting}>
+                        {offerSubmitting ? 'Отправка…' : 'Отправить'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
                 {offersLoading ? (
-                  <div className="empty-message">Загрузка офферов...</div>
+                  <div className="empty-message">Загрузка офферов…</div>
                 ) : offersError ? (
                   <div className="chart-error">{offersError}</div>
                 ) : !offers || offers.length === 0 ? (
@@ -827,60 +568,80 @@ return (
                       <div key={o._id ?? o.id} className="offer-item">
                         <div className="item-content">
                           <div className="item-main">
-                            <div className="item-type">{o.type} • {o.visibility}</div>
+                            <div className="item-type">{o.type} · {o.visibility}</div>
                             <div className="item-title">{o.title}</div>
                             <div className="item-details">
-                              {o.amount ? `$${o.amount}` : '—'} • {o.equityPercent ?? '—'}%
+                              {o.amount ? `$${o.amount.toLocaleString()}` : '—'} · {o.equityPercent ?? '—'}%
                             </div>
                             {o.note && <div className="item-note">{o.note}</div>}
                           </div>
                           <div className="item-meta">
                             <div className="item-date">{formatDate(o.createdAt)}</div>
-                            <span className={`status-badge ${o.status}`}>{o.status}</span>
+                            <span className={`status-badge ${o.status ?? ''}`}>{o.status}</span>
                           </div>
+                        </div>
+                        {isFounder && o.status !== 'accepted' && o.status !== 'rejected' && (
+                          <div className="offer-actions">
+                            <button className="btn-accept" onClick={() => updateOfferStatus(String(o._id ?? o.id), 'accepted')}>
+                              Принять
+                            </button>
+                            <button className="btn-reject" onClick={() => updateOfferStatus(String(o._id ?? o.id), 'rejected')}>
+                              Отклонить
+                            </button>
                           </div>
-                          {isFounder && o.status !== 'accepted' && o.status !== 'rejected' && (
-                            <div className="offer-actions">
-                              <button
-                                onClick={() => updateOfferStatus(String(o._id ?? o.id), 'accepted')}
-                                className="btn-accept"
-                              >
-                                Принять
-                              </button>
-                              <button
-                                onClick={() => updateOfferStatus(String(o._id ?? o.id), 'rejected')}
-                                className="btn-reject"
-                              >
-                                Отклонить
-                              </button>
-                            </div>
-                          )}
-                          </div>
-
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* ACTION BUTTONS */}
-        <section className="action-buttons">
-          <div className="primary-actions">
-            <a href={startup.website || '#'} target="_blank" rel="noreferrer" className="btn-website">
-              <ExternalLink size={16} /> Официальный сайт
-            </a>
-            <button onClick={() => navigate(`/startups/edit/${encodeURIComponent(String(idForApi()))}`)} className="btn-edit">
-              Редактировать
+          {/* ═══ ACTION BAR ═══ */}
+          <div className="action-buttons">
+            <div className="primary-actions">
+              <a href={startup.website || '#'} target="_blank" rel="noreferrer" className="btn-website">
+                <ExternalLink size={15} /> Официальный сайт
+              </a>
+              <button
+                className="btn-edit"
+                onClick={() => navigate(`/startups/edit/${encodeURIComponent(String(idForApi()))}`)}
+              >
+                Редактировать
+              </button>
+            </div>
+            <button className="btn-delete" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Удаление…' : 'Удалить стартап'}
             </button>
           </div>
-          <button onClick={handleDelete} disabled={deleting} className="btn-delete">
-            {deleting ? 'Удаление...' : 'Удалить'}
-          </button>
-        </section>
-      </article>
-    )}
-  </div>
-);
+
+        </article>
+      )}
+    </div>
+  );
+}
+
+/* ── Inline logo styles (no Tailwind dependency) ── */
+const style = document.createElement('style');
+style.textContent = `
+  .logo-img-detail {
+    width: 80px; height: 80px; border-radius: 18px;
+    object-fit: cover; border: 1px solid var(--border);
+    box-shadow: 0 0 0 4px rgba(99,179,255,0.08), 0 20px 40px rgba(0,0,0,0.4);
+    display: block;
+  }
+  .logo-initials-detail {
+    width: 80px; height: 80px; border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #1e3a5f 0%, #2d1f6b 100%);
+    border: 1px solid rgba(99,179,255,0.2);
+    box-shadow: 0 0 0 4px rgba(99,179,255,0.08), 0 20px 40px rgba(0,0,0,0.4);
+    font-family: var(--font-display); font-weight: 700;
+    font-size: 1.4rem; color: var(--accent);
+  }
+`;
+if (typeof document !== 'undefined' && !document.getElementById('sp-logo-style')) {
+  style.id = 'sp-logo-style';
+  document.head.appendChild(style);
 }

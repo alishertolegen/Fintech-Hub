@@ -1,8 +1,8 @@
 // src/components/Profile.tsx
 import React, { useEffect, useState } from 'react';
-import { Mail, Phone, MapPin, Briefcase } from 'lucide-react'; // UserIcon не используется
+import { Mail, Phone, MapPin, Briefcase, Pencil, Check, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import './Profile.css'; // <<< ИМПОРТИРУЕМ СТИЛИ
+import './Profile.css';
 
 type ApiUser = {
   id?: string;
@@ -18,12 +18,23 @@ type ApiUser = {
   role?: string;
 };
 
-type InitialsAvatarProps = {
-  name?: string;
-  size?: number;
+type InvestorApi = {
+  id?: string;
+  userId?: string;
+  legalName?: string;
+  type?: string;
+  minCheck?: number;
+  maxCheck?: number;
+  preferredIndustries?: string[];
+  preferredStages?: string[];
+  description?: string;
+  website?: string;
+  isVerified?: boolean;
 };
 
-function InitialsAvatar({ name = '', size = 64 }: InitialsAvatarProps) {
+type InitialsAvatarProps = { name?: string; size?: number };
+
+function InitialsAvatar({ name = '', size = 88 }: InitialsAvatarProps) {
   const initials = (name || '')
     .trim()
     .split(/\s+/)
@@ -35,8 +46,8 @@ function InitialsAvatar({ name = '', size = 64 }: InitialsAvatarProps) {
   return (
     <div
       aria-hidden
-      className="initials-avatar" // <<< Заменен класс
-      style={{ width: size, height: size, fontSize: size / 2.5 }}
+      className="initials-avatar"
+      style={{ width: size, height: size, fontSize: size / 2.8 }}
     >
       {initials || 'U'}
     </div>
@@ -48,29 +59,10 @@ export default function Profile() {
   const [user, setUser] = useState<ApiUser | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
-  type InvestorApi = {
-    id?: string;
-    userId?: string;
-    legalName?: string;
-    type?: string; // e.g. "angel"
-    minCheck?: number;
-    maxCheck?: number;
-    preferredIndustries?: string[];
-    preferredStages?: string[];
-    description?: string;
-    website?: string;
-    isVerified?: boolean;
-  };
-
   const [investor, setInvestor] = useState<InvestorApi | null>(null);
   const [editingInvestor, setEditingInvestor] = useState<boolean>(false);
   const [investorSaving, setInvestorSaving] = useState<boolean>(false);
 
-  // ... (весь ваш код с useEffect и fetch остается без изменений) ...
-  // [ОПУЩЕН ДЛЯ КРАТКОСТИ]
-
-  // если есть user в контексте — используем его
   useEffect(() => {
     if (authUser) {
       setUser({
@@ -88,7 +80,6 @@ export default function Profile() {
       return;
     }
 
-    // если в контексте нет user, но есть token — подтянем профиль с сервера
     if (!authLoading && token) {
       const abort = new AbortController();
       (async () => {
@@ -100,12 +91,8 @@ export default function Profile() {
             signal: abort.signal,
           });
           if (!res.ok) {
-            // попытаемся распарсить json ошибки
             let msg = `Ошибка ${res.status}`;
-            try {
-              const j = await res.json();
-              msg = j.error ?? j.message ?? msg;
-            } catch {}
+            try { const j = await res.json(); msg = j.error ?? j.message ?? msg; } catch {}
             throw new Error(msg);
           }
           const data: ApiUser = await res.json();
@@ -130,35 +117,20 @@ export default function Profile() {
       return () => abort.abort();
     }
 
-    // иначе — нет токена и нет пользователя
-    if (!authLoading && !token && !authUser) {
-      setUser(null);
-    }
+    if (!authLoading && !token && !authUser) setUser(null);
   }, [authUser, token, authLoading]);
 
   useEffect(() => {
-    if (!user) return;
-    if (user.role !== 'investor') return;
-
+    if (!user || user.role !== 'investor') return;
     const abort = new AbortController();
     (async () => {
       try {
         const res = await fetch(
           `http://localhost:8080/api/investors/user/${user.id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-            signal: abort.signal,
-          },
+          { headers: { Authorization: `Bearer ${token}` }, signal: abort.signal }
         );
-        if (res.ok) {
-          const data: InvestorApi = await res.json();
-          setInvestor(data);
-        } else if (res.status === 404) {
-          setInvestor(null); // нет профиля инвестора
-        } else {
-          // можно логировать ошибку, но не ломать UI
-          console.warn('Не удалось загрузить investor', res.status);
-        }
+        if (res.ok) setInvestor(await res.json());
+        else if (res.status !== 404) console.warn('Investor load failed', res.status);
       } catch (e: any) {
         if (e.name !== 'AbortError') console.error(e);
       }
@@ -170,37 +142,19 @@ export default function Profile() {
     if (!user) return;
     setInvestorSaving(true);
     try {
-      let res;
-      if (updated.id) {
-        res = await fetch(`http://localhost:8080/api/investors/${updated.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(updated),
-        });
-      } else {
-        // если вы добавили updateByUserId
-        res = await fetch(
-          `http://localhost:8080/api/investors/user/${user.id}`,
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(updated),
-          },
-        );
-      }
-
+      const url = updated.id
+        ? `http://localhost:8080/api/investors/${updated.id}`
+        : `http://localhost:8080/api/investors/user/${user.id}`;
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(updated),
+      });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.message ?? `Ошибка ${res.status}`);
       }
-      const saved: InvestorApi = await res.json();
-      setInvestor(saved);
+      setInvestor(await res.json());
       setEditingInvestor(false);
     } catch (e: any) {
       alert('Ошибка при сохранении: ' + (e.message ?? e));
@@ -209,53 +163,43 @@ export default function Profile() {
     }
   }
 
-  // ... [Конец логики] ...
-
+  /* ── States ── */
   if (authLoading || loading) {
     return (
       <div className="profile-page">
-        <div className="profile-card loading-state">
-          <div>Загрузка профиля…</div>
-        </div>
+        <div className="profile-card loading-state">Загрузка профиля…</div>
       </div>
     );
   }
-
   if (error) {
     return (
       <div className="profile-page">
-        <div className="profile-card error-state">
-          <div>Ошибка: {error}</div>
-        </div>
+        <div className="profile-card error-state">Ошибка: {error}</div>
       </div>
     );
   }
-
   if (!user) {
     return (
       <div className="profile-page">
         <div className="profile-card unauth-state">
-          <div>Профиль недоступен — пожалуйста, войдите в систему.</div>
+          Профиль недоступен — пожалуйста, войдите в систему.
         </div>
       </div>
     );
   }
 
+  /* ── Main Render ── */
   return (
     <div className="profile-page">
       <div className="profile-card">
-        {/* === ГРАДИЕНТНАЯ ШАПКА === */}
+
+        {/* ═══ HEADER ═══ */}
         <div className="profile-header">
-          <div>
+          <div className="profile-avatar-wrap">
             {user.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={user.avatarUrl}
-                alt={user.name}
-                className="profile-avatar"
-              />
+              <img src={user.avatarUrl} alt={user.name} className="profile-avatar" />
             ) : (
-              <InitialsAvatar name={user.name} size={80} />
+              <InitialsAvatar name={user.name} size={88} />
             )}
           </div>
 
@@ -263,13 +207,16 @@ export default function Profile() {
             <div className="profile-header-top">
               <h1 className="profile-name">{user.name}</h1>
               {user.role && (
-                <span className="profile-role-badge">{user.role}</span>
+                <span className="profile-role-badge" data-role={user.role}>
+                  {user.role}
+                </span>
               )}
             </div>
 
             {user.company && (
               <p className="profile-company">
-                <Briefcase size={16} /> {user.company}
+                <Briefcase size={14} />
+                {user.company}
               </p>
             )}
 
@@ -277,12 +224,13 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* === ТЕЛО КАРТОЧКИ (БЕЛОЕ) === */}
+        {/* ═══ BODY ═══ */}
         <div className="profile-body">
-          {/* === СЕТКА КОНТАКТОВ === */}
+
+          {/* Contact grid */}
           <div className="contact-grid">
             <div className="contact-item">
-              <Mail size={18} className="contact-item-icon" />
+              <Mail size={17} className="contact-item-icon" />
               <div>
                 <div className="contact-label">Email</div>
                 <div className="contact-value">{user.email}</div>
@@ -290,7 +238,7 @@ export default function Profile() {
             </div>
 
             <div className="contact-item">
-              <Phone size={18} className="contact-item-icon" />
+              <Phone size={17} className="contact-item-icon" />
               <div>
                 <div className="contact-label">Телефон</div>
                 <div className="contact-value">{user.phone ?? '—'}</div>
@@ -298,178 +246,137 @@ export default function Profile() {
             </div>
 
             <div className="contact-item">
-              <MapPin size={18} className="contact-item-icon" />
+              <MapPin size={17} className="contact-item-icon" />
               <div>
-                <div className="contact-label">Орналасқан жері</div>
+                <div className="contact-label">Местоположение</div>
                 <div className="contact-value">{user.location ?? '—'}</div>
               </div>
             </div>
           </div>
 
-          {/* === ПРОФИЛЬ ИНВЕСТОРА (ЕСЛИ ЕСТЬ) === */}
+          {/* ═══ INVESTOR SECTION ═══ */}
           {user.role === 'investor' && (
             <div className="profile-section">
               <h2 className="section-title">Профиль инвестора</h2>
 
               {!editingInvestor ? (
-                /* === РЕЖИМ ПРОСМОТРА === */
+                /* View mode */
                 <div className="investor-view">
                   <div>
-                    <strong>Юридическое имя:</strong>
+                    <strong>Юридическое имя</strong>
                     {investor?.legalName ?? '—'}
                   </div>
                   <div>
-                    <strong>Тип:</strong>
+                    <strong>Тип</strong>
                     {investor?.type ?? '—'}
                   </div>
                   <div>
-                    <strong>Чек min — max:</strong>
+                    <strong>Чек min — max</strong>
                     {investor?.minCheck ?? '—'} — {investor?.maxCheck ?? '—'}
                   </div>
                   <div>
-                    <strong>Отрасли:</strong>
+                    <strong>Отрасли</strong>
                     {(investor?.preferredIndustries || []).join(', ') || '—'}
                   </div>
                   <div>
-                    <strong>Стадии:</strong>
+                    <strong>Стадии</strong>
                     {(investor?.preferredStages || []).join(', ') || '—'}
                   </div>
                   <div>
-                    <strong>Сайт:</strong>
-                    {investor?.website ?? '—'}
+                    <strong>Сайт</strong>
+                    {investor?.website ? (
+                      <a href={investor.website} target="_blank" rel="noreferrer"
+                        style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                        {investor.website}
+                      </a>
+                    ) : '—'}
                   </div>
-                  <div>
-                    <strong className="description-label">Описание:</strong>
-                    <div className="description-text">
-                      {investor?.description ?? '—'}
-                    </div>
+                  <div className="description-full">
+                    <strong className="description-label">Описание</strong>
+                    <div className="description-text">{investor?.description ?? '—'}</div>
                   </div>
-
-                  <div style={{ marginTop: '20px' }}>
-                    <button
-                      onClick={() => setEditingInvestor(true)}
-                      className="button button-primary"
-                    >
-                      Редактировать профиль инвестора
+                  <div className="edit-action">
+                    <button onClick={() => setEditingInvestor(true)} className="button button-primary">
+                      <Pencil size={14} /> Редактировать профиль
                     </button>
                   </div>
                 </div>
               ) : (
-                /* === РЕЖИМ РЕДАКТИРОВАНИЯ === */
+                /* Edit mode */
                 <div className="investor-form">
                   <input
                     className="form-input"
                     placeholder="Юридическое имя"
                     value={investor?.legalName ?? ''}
-                    onChange={(e) =>
-                      setInvestor((prev) => ({
-                        ...(prev ?? {}),
-                        legalName: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setInvestor((p) => ({ ...(p ?? {}), legalName: e.target.value }))}
                   />
                   <input
                     className="form-input"
                     placeholder="Тип (angel, vc и т.д.)"
                     value={investor?.type ?? ''}
-                    onChange={(e) =>
-                      setInvestor((prev) => ({
-                        ...(prev ?? {}),
-                        type: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setInvestor((p) => ({ ...(p ?? {}), type: e.target.value }))}
                   />
                   <div className="form-row">
                     <input
                       type="number"
                       className="form-input"
-                      placeholder="minCheck"
+                      placeholder="Min чек"
                       value={investor?.minCheck ?? ''}
                       onChange={(e) =>
-                        setInvestor((prev) => ({
-                          ...(prev ?? {}),
-                          minCheck: e.target.value
-                            ? Number(e.target.value)
-                            : undefined,
-                        }))
+                        setInvestor((p) => ({ ...(p ?? {}), minCheck: e.target.value ? Number(e.target.value) : undefined }))
                       }
                     />
                     <input
                       type="number"
                       className="form-input"
-                      placeholder="maxCheck"
+                      placeholder="Max чек"
                       value={investor?.maxCheck ?? ''}
                       onChange={(e) =>
-                        setInvestor((prev) => ({
-                          ...(prev ?? {}),
-                          maxCheck: e.target.value
-                            ? Number(e.target.value)
-                            : undefined,
-                        }))
+                        setInvestor((p) => ({ ...(p ?? {}), maxCheck: e.target.value ? Number(e.target.value) : undefined }))
                       }
                     />
                   </div>
-
                   <input
                     className="form-input"
                     placeholder="Отрасли (через запятую)"
                     value={(investor?.preferredIndustries ?? []).join(', ')}
                     onChange={(e) =>
-                      setInvestor((prev) => ({
-                        ...(prev ?? {}),
-                        preferredIndustries: e.target.value
-                          .split(',')
-                          .map((s) => s.trim())
-                          .filter(Boolean),
+                      setInvestor((p) => ({
+                        ...(p ?? {}),
+                        preferredIndustries: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
                       }))
                     }
                   />
-
                   <input
                     className="form-input"
                     placeholder="Стадии (через запятую)"
                     value={(investor?.preferredStages ?? []).join(', ')}
                     onChange={(e) =>
-                      setInvestor((prev) => ({
-                        ...(prev ?? {}),
-                        preferredStages: e.target.value
-                          .split(',')
-                          .map((s) => s.trim())
-                          .filter(Boolean),
+                      setInvestor((p) => ({
+                        ...(p ?? {}),
+                        preferredStages: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
                       }))
                     }
                   />
-
                   <input
                     className="form-input"
                     placeholder="Сайт"
                     value={investor?.website ?? ''}
-                    onChange={(e) =>
-                      setInvestor((prev) => ({
-                        ...(prev ?? {}),
-                        website: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setInvestor((p) => ({ ...(p ?? {}), website: e.target.value }))}
                   />
-
                   <textarea
                     className="form-textarea"
                     placeholder="Описание"
                     value={investor?.description ?? ''}
-                    onChange={(e) =>
-                      setInvestor((prev) => ({
-                        ...(prev ?? {}),
-                        description: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setInvestor((p) => ({ ...(p ?? {}), description: e.target.value }))}
                   />
-
                   <div className="form-row">
                     <button
                       className="button button-success"
                       onClick={() => saveInvestor(investor ?? { userId: user.id })}
                       disabled={investorSaving}
                     >
+                      <Check size={14} />
                       {investorSaving ? 'Сохранение...' : 'Сохранить'}
                     </button>
                     <button
@@ -477,7 +384,7 @@ export default function Profile() {
                       onClick={() => setEditingInvestor(false)}
                       disabled={investorSaving}
                     >
-                      Отмена
+                      <X size={14} /> Отмена
                     </button>
                   </div>
                 </div>

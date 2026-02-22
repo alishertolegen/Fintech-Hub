@@ -1,14 +1,14 @@
 // src/components/StartupsList.tsx
 import React, { useMemo, useState, useEffect, JSX } from 'react';
-import { Search, ExternalLink, BarChart2, Globe, FileText } from 'lucide-react';
+import { Search, ExternalLink, BarChart2, Globe, FileText, TrendingUp, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import './StartupsList.css';
 
 const API = 'http://localhost:8080/api/startups';
 
-type MetricsSnapshot = { 
-  mrr?: number | null; 
-  users?: number | null; 
+type MetricsSnapshot = {
+  mrr?: number | null;
+  users?: number | null;
   valuationPreMoney?: number | null;
   valuationPostMoney?: number | null;
 };
@@ -41,20 +41,23 @@ function Logo({ name, url }: { name?: string; url?: string }) {
     .slice(0, 2)
     .join('')
     .toUpperCase();
-  return (
-    <div className="logo-initials">
-      {initials || 'S'}
-    </div>
-  );
+  return <div className="logo-initials">{initials || 'S'}</div>;
 }
 
 function formatDate(iso?: string | number | Date): string {
   if (!iso) return '';
   try {
-    return new Date(iso).toLocaleDateString();
-  } catch (e) {
+    return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch {
     return String(iso);
   }
+}
+
+function formatNumber(n?: number | null): string {
+  if (n == null) return '—';
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return `$${n}`;
 }
 
 export default function StartupsList(): JSX.Element {
@@ -66,14 +69,12 @@ export default function StartupsList(): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Debounce search & filters
   const [queryTrigger, setQueryTrigger] = useState(0);
   useEffect(() => {
     const t = setTimeout(() => setQueryTrigger((x) => x + 1), 300);
     return () => clearTimeout(t);
   }, [searchTerm, stageFilter, industryFilter, showPrivate]);
 
-  // Fetch from backend
   useEffect(() => {
     let canceled = false;
     (async () => {
@@ -81,55 +82,42 @@ export default function StartupsList(): JSX.Element {
       setError(null);
       try {
         const params = new URLSearchParams();
-        if (stageFilter && stageFilter !== 'all') params.set('stage', stageFilter);
-        if (industryFilter && industryFilter !== 'all') params.set('industry', industryFilter);
-        if (searchTerm && searchTerm.trim().length > 0) params.set('q', searchTerm.trim());
+        if (stageFilter !== 'all') params.set('stage', stageFilter);
+        if (industryFilter !== 'all') params.set('industry', industryFilter);
+        if (searchTerm.trim()) params.set('q', searchTerm.trim());
 
-        const url = params.toString() ? `${API}?${params.toString()}` : API;
+        const url = params.toString() ? `${API}?${params}` : API;
         const res = await fetch(url, { credentials: 'include' });
         if (!res.ok) {
           const txt = await res.text();
           let msg = `Ошибка ${res.status}`;
-          try {
-            const json = JSON.parse(txt);
-            msg = json.error ?? json.message ?? msg;
-          } catch {}
+          try { const j = JSON.parse(txt); msg = j.error ?? j.message ?? msg; } catch {}
           throw new Error(msg);
         }
         const data = (await res.json()) as Startup[];
-        if (!canceled) {
-          setStartups(Array.isArray(data) ? data : []);
-        }
+        if (!canceled) setStartups(Array.isArray(data) ? data : []);
       } catch (e: any) {
         if (!canceled) setError(e.message ?? 'Не удалось загрузить стартапы');
       } finally {
         if (!canceled) setLoading(false);
       }
     })();
-    return () => {
-      canceled = true;
-    };
+    return () => { canceled = true; };
   }, [queryTrigger]);
 
-  // Industries list
   const industries = useMemo(() => {
     const s = new Set<string>();
-    startups.forEach((st) => {
-      if (st.industry) s.add(st.industry);
-    });
+    startups.forEach((st) => { if (st.industry) s.add(st.industry); });
     return Array.from(s).sort();
   }, [startups]);
 
-  // Local filtered view
   const filtered = useMemo(() => {
     return startups.filter((s) => {
       if (!showPrivate && s.visibility === 'private') return false;
       if (stageFilter !== 'all' && s.stage !== stageFilter) return false;
       if (industryFilter !== 'all' && s.industry !== industryFilter) return false;
-
       const q = searchTerm.trim().toLowerCase();
       if (!q) return true;
-
       return (
         (s.name ?? '').toLowerCase().includes(q) ||
         (s.shortPitch ?? '').toLowerCase().includes(q) ||
@@ -141,16 +129,19 @@ export default function StartupsList(): JSX.Element {
 
   return (
     <div className="startups-container">
+      {/* ═══ HEADER ═══ */}
       <header className="startups-header">
         <div className="startups-title-section">
           <h1>Стартаптар</h1>
           <p className="startups-subtitle">Профили стартапов — основная коллекция</p>
-          <div className="startups-count">Найдено: <strong>{filtered.length}</strong></div>
+          <div className="startups-count">
+            Найдено: <strong>{filtered.length}</strong>
+          </div>
         </div>
 
         <div className="startups-filters">
           <div className="search-wrapper">
-            <Search className="search-icon" size={20} />
+            <Search className="search-icon" size={18} />
             <input
               className="search-input"
               placeholder="Поиск стартапа, pitch, отрасль..."
@@ -159,11 +150,7 @@ export default function StartupsList(): JSX.Element {
             />
           </div>
 
-          <select
-            value={stageFilter}
-            onChange={(e) => setStageFilter(e.target.value)}
-            className="filter-select"
-          >
+          <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)} className="filter-select">
             <option value="all">Все стадии</option>
             <option value="idea">Idea</option>
             <option value="incubation">Incubation</option>
@@ -171,16 +158,10 @@ export default function StartupsList(): JSX.Element {
             <option value="growth">Growth</option>
           </select>
 
-          <select
-            value={industryFilter}
-            onChange={(e) => setIndustryFilter(e.target.value)}
-            className="filter-select"
-          >
+          <select value={industryFilter} onChange={(e) => setIndustryFilter(e.target.value)} className="filter-select">
             <option value="all">Все отрасли</option>
             {industries.map((ind) => (
-              <option key={ind} value={ind}>
-                {ind}
-              </option>
+              <option key={ind} value={ind}>{ind}</option>
             ))}
           </select>
 
@@ -191,108 +172,102 @@ export default function StartupsList(): JSX.Element {
         </div>
       </header>
 
-      {loading && (
-        <div className="loading-state">Загрузка...</div>
-      )}
+      {/* ═══ STATES ═══ */}
+      {loading && <div className="loading-state">Загрузка стартапов…</div>}
+      {error && <div className="error-state">Ошибка: {error}</div>}
 
-      {error && (
-        <div className="error-state">
-          Ошибка: {error}
-        </div>
-      )}
+      {/* ═══ GRID ═══ */}
+      {!loading && !error && (
+        <div className="startups-grid">
+          {filtered.map((s) => {
+            const key = s.id ?? s._id ?? s.slug ?? Math.random().toString(36).slice(2, 9);
+            const valuationMode = s.valuationMode ?? 'pre';
+            const activeValuation =
+              valuationMode === 'pre'
+                ? s.metricsSnapshot?.valuationPreMoney
+                : s.metricsSnapshot?.valuationPostMoney;
 
-      <div className="startups-grid">
-        {filtered.map((s) => {
-          const key = s.id ?? s._id ?? s.slug ?? Math.random().toString(36).slice(2, 9);
-          const valuationMode = s.valuationMode ?? 'pre';
-
-const activeValuation =
-  valuationMode === 'pre'
-    ? s.metricsSnapshot?.valuationPreMoney
-    : s.metricsSnapshot?.valuationPostMoney;
-          return (
-            <article key={key} className="startup-card">
-              <div className="startup-logo">
-                <Logo name={s.name} url={s.logoUrl} />
-              </div>
-
-              <div className="startup-content">
-                <div className="startup-header">
-                  <div className="startup-title-wrapper">
-                    <h2>
-                      {s.name}
-                      <span className="stage-badge">{s.stage}</span>
-                      <span className="industry-text">{s.industry}</span>
-                    </h2>
-                    <p className="short-pitch">{s.shortPitch}</p>
-                  </div>
-
-                  <div className="startup-metrics">
-<div>MRR: <strong>{s.metricsSnapshot?.mrr ?? 0}</strong></div>
-<div>Users: <strong>{s.metricsSnapshot?.users ?? 0}</strong></div>
-
-<div>
-  Valuation ({valuationMode.toUpperCase()}):
-  <strong> {activeValuation ?? 0}</strong>
-</div>
-
-<div className="created-date">
-  {formatDate(s.createdAt)}
-</div>
-                  </div>
+            return (
+              <article key={key} className="startup-card">
+                {/* Logo */}
+                <div className="startup-logo">
+                  <Logo name={s.name} url={s.logoUrl} />
                 </div>
 
-                <p className="startup-description">{s.description}</p>
+                <div className="startup-content">
+                  {/* Header */}
+                  <div className="startup-header">
+                    <div className="startup-title-wrapper">
+                      <h2>
+                        {s.name}
+                        {s.stage && <span className="stage-badge">{s.stage}</span>}
+                        {s.industry && <span className="industry-text">{s.industry}</span>}
+                      </h2>
+                      {s.shortPitch && <p className="short-pitch">{s.shortPitch}</p>}
+                    </div>
 
-                <div className="startup-footer">
-                  <div className="startup-meta">
-                    {s.website && (() => {
-                      try {
-                        return (
-                          <a href={s.website} target="_blank" rel="noreferrer" className="meta-link">
-                            <Globe size={14} /> {new URL(s.website).hostname}
-                          </a>
-                        );
-                      } catch {
-                        return null;
-                      }
-                    })()}
-
-                    <div className="meta-info">
-                      <BarChart2 size={14} /> {s.attachments?.length ?? 0} files
+                    <div className="startup-metrics">
+                      <div>
+                        <TrendingUp size={11} style={{ display: 'inline', marginRight: 3 }} />
+                        MRR <strong>{formatNumber(s.metricsSnapshot?.mrr)}</strong>
+                      </div>
+                      <div>
+                        <Users size={11} style={{ display: 'inline', marginRight: 3 }} />
+                        <strong>{s.metricsSnapshot?.users?.toLocaleString() ?? '—'}</strong>
+                      </div>
+                      <div>Val <strong>{formatNumber(activeValuation)}</strong></div>
+                      {s.createdAt && (
+                        <div className="created-date">{formatDate(s.createdAt)}</div>
+                      )}
                     </div>
                   </div>
 
-                  <div className="startup-actions">
-                    <Link
-                      to={`/startups/${s.id ?? s._id}`}
-                      className="btn-details"
-                    >
-                      <FileText size={16} /> Подробнее
-                    </Link>
+                  {/* Description */}
+                  {s.description && (
+                    <p className="startup-description">{s.description}</p>
+                  )}
 
-                    <a
-                      href={s.website || '#'}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn-website"
-                    >
-                      <ExternalLink size={16} /> Сайт
-                    </a>
+                  {/* Footer */}
+                  <div className="startup-footer">
+                    <div className="startup-meta">
+                      {s.website && (() => {
+                        try {
+                          return (
+                            <a href={s.website} target="_blank" rel="noreferrer" className="meta-link">
+                              <Globe size={13} />
+                              {new URL(s.website).hostname}
+                            </a>
+                          );
+                        } catch { return null; }
+                      })()}
+                      <div className="meta-info">
+                        <BarChart2 size={13} />
+                        {s.attachments?.length ?? 0} files
+                      </div>
+                    </div>
+
+                    <div className="startup-actions">
+                      <Link to={`/startups/${s.id ?? s._id}`} className="btn-details">
+                        <FileText size={14} /> Подробнее
+                      </Link>
+                      <a href={s.website || '#'} target="_blank" rel="noreferrer" className="btn-website">
+                        <ExternalLink size={14} /> Сайт
+                      </a>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </article>
-          );
-        })}
+              </article>
+            );
+          })}
 
-        {filtered.length === 0 && !loading && (
-          <div className="empty-state">
-            <h3>Стартаптар табылмады</h3>
-            <p>Попробуйте изменить поисковый запрос или фильтры.</p>
-          </div>
-        )}
-      </div>
+          {filtered.length === 0 && !loading && (
+            <div className="empty-state">
+              <h3>Стартаптар табылмады</h3>
+              <p>Попробуйте изменить поисковый запрос или фильтры.</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

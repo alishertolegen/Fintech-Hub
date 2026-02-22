@@ -1,297 +1,383 @@
-/* Navbar.css - Современный дизайн навигации */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
 
+/* ============================================
+   ROOT — inherits from Profile.css if loaded,
+   re-declared here for standalone safety
+   ============================================ */
+:root {
+  --bg: #080c14;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-hover: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-glow: rgba(99, 179, 255, 0.25);
+  --accent: #63b3ff;
+  --accent-2: #a78bfa;
+  --text-primary: #f0f4ff;
+  --text-secondary: rgba(240, 244, 255, 0.55);
+  --text-muted: rgba(240, 244, 255, 0.3);
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --navbar-height: 64px;
+}
+
+/* ============================================
+   NAVBAR SHELL
+   ============================================ */
 .navbar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 1000;
-  backdrop-filter: blur(10px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: var(--navbar-height);
+  font-family: var(--font-body);
+
+  /* Frosted glass */
+  background: rgba(8, 12, 20, 0.75);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+
+  border-bottom: 1px solid var(--border);
+
+  /* Subtle top accent line */
+  box-shadow:
+    0 1px 0 0 var(--border),
+    0 0 40px rgba(99, 179, 255, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+/* Animated shimmer line at very top */
+.navbar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(99, 179, 255, 0.6) 30%,
+    rgba(167, 139, 250, 0.6) 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 4s linear infinite;
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* ============================================
+   INNER CONTAINER
+   ============================================ */
 .navbar-container {
-  max-width: 1280px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 1rem 2rem;
+  height: 100%;
+  padding: 0 28px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 
-/* Логотип */
+/* ============================================
+   LOGO
+   ============================================ */
 .navbar-logo {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 10px;
   text-decoration: none;
-  color: white;
-  font-size: 1.5rem;
-  font-weight: 700;
-  transition: transform 0.3s ease;
+  flex-shrink: 0;
+  margin-right: 8px;
+  transition: opacity 0.2s;
 }
 
-.navbar-logo:hover {
-  transform: translateY(-2px);
-}
+.navbar-logo:hover { opacity: 0.85; }
 
 .logo-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  font-size: 1.75rem;
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #1a4a8a 0%, #2d1f6b 100%);
+  border: 1px solid rgba(99, 179, 255, 0.25);
+  box-shadow: 0 0 16px rgba(99, 179, 255, 0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 .logo-text {
-  background: linear-gradient(to right, #fff, #f0f0f0);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
 }
 
-/* Навигация */
+/* ============================================
+   NAV — desktop
+   ============================================ */
 .navbar-nav {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 2px;
+  flex: 1;
 }
 
+/* ============================================
+   NAV LINKS
+   ============================================ */
 .nav-link {
-  color: rgba(255, 255, 255, 0.9);
-  text-decoration: none;
-  font-size: 1rem;
-  font-weight: 500;
   position: relative;
-  padding: 0.5rem 0;
-  transition: color 0.3s ease;
-}
-
-.nav-link::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: white;
-  transition: width 0.3s ease;
-}
-
-.nav-link:hover {
-  color: white;
-}
-
-.nav-link:hover::after {
-  width: 100%;
-}
-
-/* Действия пользователя */
-.navbar-actions {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 1.5rem;
-  margin-left: 2rem;
-  padding-left: 2rem;
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.user-name {
-  color: white;
-  font-size: 0.95rem;
+  padding: 7px 13px;
+  border-radius: 8px;
+  font-size: 0.875rem;
   font-weight: 500;
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.18s, background 0.18s;
   white-space: nowrap;
 }
 
-/* Кнопки */
-.btn-login,
-.btn-logout {
-  padding: 0.625rem 1.5rem;
+.nav-link:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+/* Active state — add .active class via NavLink if using react-router v6 */
+.nav-link.active {
+  color: var(--accent);
+  background: rgba(99, 179, 255, 0.08);
+}
+
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.7;
+}
+
+/* ============================================
+   ACTIONS (pushed to the right)
+   ============================================ */
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  padding-left: 8px;
+}
+
+/* User name pill */
+.user-name {
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 5px 10px;
   border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
 
-.btn-login {
-  background: white;
-  color: #667eea;
-  border: 2px solid white;
-}
-
-.btn-login:hover {
-  background: transparent;
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
-}
-
+/* Logout button */
 .btn-logout {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(10px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  background: rgba(248, 113, 113, 0.07);
+  color: #f87171;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
 }
 
 .btn-logout:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: rgba(248, 113, 113, 0.15);
+  border-color: rgba(248, 113, 113, 0.45);
+  box-shadow: 0 0 16px rgba(248, 113, 113, 0.15);
 }
 
-/* Мобильное меню */
+/* Login button */
+.btn-login {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 18px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1a4a8a, #2563c7);
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(37, 99, 199, 0.35);
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+
+.btn-login:hover {
+  box-shadow: 0 6px 24px rgba(37, 99, 199, 0.5);
+  transform: translateY(-1px);
+}
+
+/* ============================================
+   HAMBURGER TOGGLE — hidden on desktop
+   ============================================ */
 .navbar-toggle {
   display: none;
   flex-direction: column;
+  justify-content: center;
+  align-items: center;
   gap: 5px;
-  background: none;
-  border: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
   cursor: pointer;
-  padding: 8px;
+  margin-left: auto;
+  transition: background 0.18s, border-color 0.18s;
+  flex-shrink: 0;
+}
+
+.navbar-toggle:hover {
+  background: var(--surface-hover);
+  border-color: rgba(255,255,255,0.15);
 }
 
 .navbar-toggle span {
-  width: 28px;
-  height: 3px;
-  background: white;
-  border-radius: 3px;
-  transition: all 0.3s ease;
+  display: block;
+  width: 16px;
+  height: 1.5px;
+  background: var(--text-secondary);
+  border-radius: 2px;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s, width 0.3s;
+  transform-origin: center;
 }
 
-/* Адаптивность */
-@media (max-width: 1024px) {
-  .navbar-nav {
-    gap: 1.5rem;
-  }
-  
-  .navbar-actions {
-    margin-left: 1.5rem;
-    padding-left: 1.5rem;
-  }
+/* X animation */
+.navbar-toggle.active span:nth-child(1) {
+  transform: translateY(6.5px) rotate(45deg);
+  width: 18px;
+  background: var(--accent);
+}
+.navbar-toggle.active span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+.navbar-toggle.active span:nth-child(3) {
+  transform: translateY(-6.5px) rotate(-45deg);
+  width: 18px;
+  background: var(--accent);
 }
 
+/* ============================================
+   MOBILE (≤ 768px)
+   ============================================ */
 @media (max-width: 768px) {
-  .navbar-container {
-    padding: 1rem 1.5rem;
-  }
-
   .navbar-toggle {
     display: flex;
   }
 
   .navbar-nav {
+    /* Slide-down drawer */
     position: fixed;
-    top: 80px;
+    top: var(--navbar-height);
     left: 0;
     right: 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     flex-direction: column;
-    padding: 2rem;
-    gap: 1.5rem;
-    transform: translateX(-100%);
+    align-items: stretch;
+    gap: 4px;
+    padding: 16px 16px 24px;
+
+    background: rgba(8, 12, 20, 0.97);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+
+    /* Hidden state */
     opacity: 0;
-    transition: all 0.3s ease;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition:
+      opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .navbar-nav.active {
-    transform: translateX(0);
     opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
   }
 
   .nav-link {
-    width: 100%;
-    padding: 0.75rem 0;
-    font-size: 1.1rem;
+    padding: 12px 14px;
+    font-size: 0.95rem;
+    border-radius: 10px;
+  }
+
+  .nav-link.active::after {
+    display: none;
   }
 
   .navbar-actions {
-    flex-direction: column;
-    width: 100%;
     margin-left: 0;
     padding-left: 0;
-    padding-top: 1.5rem;
-    border-left: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    gap: 1rem;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .user-name {
     max-width: 100%;
+    text-align: center;
   }
 
-  .btn-login,
-  .btn-logout {
+  .btn-logout,
+  .btn-login {
     width: 100%;
-    padding: 0.875rem 1.5rem;
-    font-size: 1rem;
-  }
-
-  .navbar-toggle.active span:nth-child(1) {
-    transform: rotate(45deg) translate(8px, 8px);
-  }
-
-  .navbar-toggle.active span:nth-child(2) {
-    opacity: 0;
-  }
-
-  .navbar-toggle.active span:nth-child(3) {
-    transform: rotate(-45deg) translate(7px, -7px);
+    justify-content: center;
+    padding: 12px;
+    font-size: 0.9rem;
   }
 }
 
-/* Анимации */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.navbar {
-  animation: fadeIn 0.4s ease;
-}
-
-/* Улучшенные ховер эффекты */
-.nav-link,
-.btn-login,
-.btn-logout {
-  position: relative;
-  overflow: hidden;
-}
-
-.nav-link::before,
-.btn-login::before,
-.btn-logout::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
-}
-
-.nav-link:hover::before,
-.btn-login:hover::before,
-.btn-logout:hover::before {
-  width: 300px;
-  height: 300px;
+/* ============================================
+   BODY OFFSET — so page content clears navbar
+   ============================================ */
+body {
+  padding-top: var(--navbar-height);
 }
