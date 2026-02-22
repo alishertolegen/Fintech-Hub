@@ -1,468 +1,583 @@
+// src/pages/CreateStartup.tsx
 import React, { JSX, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Image, PlusSquare, BarChart2, Sparkles } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Globe, Image as ImageIcon, BarChart2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import './CreateStartup.css';
 
-const API = 'http://localhost:8080/api/startups';
+const API         = 'http://localhost:8080/api/startups';
 const METRICS_API = 'http://localhost:8080/api/startup-metrics';
 
-type CreatePayload = {
-  name: string;
-  founderId?: string;
-  stage?: string;
-  industry?: string;
-  shortPitch?: string;
-  description?: string;
-  website?: string;
-  logoUrl?: string;
-  metricsSnapshot?: { mrr?: number; users?: number; valuationPreMoney?: number; valuationPostMoney?: number };
-  attachments?: string[];
-  visibility?: string;
-  valuationMode?: string;
-};
+const STAGES = [
+  { value: 'idea',     emoji: '💡', label: 'Idea'     },
+  { value: 'pre-seed', emoji: '🌱', label: 'Pre-seed' },
+  { value: 'seed',     emoji: '🚀', label: 'Seed'     },
+  { value: 'series-a', emoji: '📈', label: 'Series A' },
+  { value: 'growth',   emoji: '⚡', label: 'Growth'   },
+  { value: 'mature',   emoji: '🏛️', label: 'Mature'   },
+];
+
+const WIZARD_STEPS = [
+  { name: 'Идентификация', desc: 'Название и суть проекта' },
+  { name: 'Детали',        desc: 'Контакты и параметры'    },
+  { name: 'Метрики',       desc: 'Первоначальные данные'   },
+  { name: 'Проверка',      desc: 'Подтвердите и создайте'  },
+];
 
 export default function CreateStartup(): JSX.Element {
   const nav = useNavigate();
   const { user } = useAuth() as any;
   const currentUserId = user?.id ?? user?._id ?? user?.sub ?? undefined;
 
-  const [name, setName] = useState('');
-  const [stage, setStage] = useState('idea');
-  const [industry, setIndustry] = useState('');
+  const [step, setStep] = useState(0);
+
+  /* ── Step 1: Identity ── */
+  const [name,       setName]       = useState('');
+  const [stage,      setStage]      = useState('idea');
+  const [industry,   setIndustry]   = useState('');
   const [shortPitch, setShortPitch] = useState('');
-  const [description, setDescription] = useState('');
-  const [website, setWebsite] = useState('');
-  const [logoUrl, setLogoUrl] = useState('');
+  const [description,setDescription]= useState('');
+
+  /* ── Step 2: Details ── */
+  const [website,         setWebsite]         = useState('');
+  const [logoUrl,         setLogoUrl]         = useState('');
   const [attachmentsText, setAttachmentsText] = useState('');
-  const [visibility, setVisibility] = useState('public');
+  const [visibility,      setVisibility]      = useState('public');
+  const [valuationMode,   setValuationMode]   = useState<'pre' | 'post'>('pre');
 
-  const [withMetric, setWithMetric] = useState(false);
-  const [metricDate, setMetricDate] = useState<string>(() => {
+  /* ── Step 3: Metrics ── */
+  const [withMetric,          setWithMetric]          = useState(false);
+  const [metricDate,          setMetricDate]          = useState(() => {
     const d = new Date();
-    const yyyy = d.getUTCFullYear();
-    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const dd = String(d.getUTCDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
   });
-  const [metricMrr, setMetricMrr] = useState<number | ''>('');
-  const [metricActiveUsers, setMetricActiveUsers] = useState<number | ''>('');
-  const [metricBurnRate, setMetricBurnRate] = useState<number | ''>('');
-  const [metricValuationPre, setMetricValuationPre] = useState<number | ''>('');
-  const [metricOther, setMetricOther] = useState<string>('');
+  const [metricMrr,           setMetricMrr]           = useState<number | ''>('');
+  const [metricActiveUsers,   setMetricActiveUsers]   = useState<number | ''>('');
+  const [metricBurnRate,      setMetricBurnRate]       = useState<number | ''>('');
+  const [metricValuationPre,  setMetricValuationPre]  = useState<number | ''>('');
+  const [metricValuationPost, setMetricValuationPost] = useState<number | ''>('');
+  const [metricOther,         setMetricOther]         = useState('');
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  /* ── UI ── */
+  const [loading,    setLoading]    = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const [valuationMode, setValuationMode] = useState<'pre' | 'post'>('pre');
-const [metricValuationPost, setMetricValuationPost] = useState<number | ''>('');
-
-  function parseAttachments(text: string): string[] {
-    if (!text) return [];
-    return text
-      .split(/[\n,]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
+  function parseAttachments(t: string): string[] {
+    return t ? t.split(/[\n,]+/).map(s => s.trim()).filter(Boolean) : [];
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  /* Validation per step */
+  function validateStep(s: number): string | null {
+    if (s === 0 && !name.trim()) return 'Введите название стартапа.';
+    if (s === 0 && !shortPitch.trim()) return 'Добавьте краткий питч.';
+    if (s === 2 && withMetric) {
+      if (metricMrr === '') return 'Введите MRR.';
+      if (metricActiveUsers === '') return 'Введите Active Users.';
+      if (valuationMode === 'pre'  && (!metricValuationPre  || metricValuationPre  <= 0)) return 'Введите Pre-money valuation.';
+      if (valuationMode === 'post' && (!metricValuationPost || metricValuationPost <= 0)) return 'Введите Post-money valuation.';
+    }
+    return null;
+  }
+
+  function next() {
+    const err = validateStep(step);
+    if (err) { setError(err); return; }
     setError(null);
-    setSuccessMsg(null);
-    if (withMetric) {
-  if (
-    valuationMode === 'pre' &&
-    (metricValuationPre === '' || metricValuationPre <= 0)
-  ) {
-    setError('Введите корректную Pre-money valuation');
-    return;
+    setStep(s => Math.min(s + 1, 3));
   }
 
-  if (
-    valuationMode === 'post' &&
-    (metricValuationPost === '' || metricValuationPost <= 0)
-  ) {
-    setError('Введите корректную Post-money valuation');
-    return;
-  }
-}
+  function prev() { setError(null); setStep(s => Math.max(s - 1, 0)); }
 
-    if (!name.trim()) {
-      setError('Название стартапа обязательно.');
-      return;
-    }
+  async function handleSubmit() {
+    const err = validateStep(step);
+    if (err) { setError(err); return; }
+    setLoading(true); setError(null); setSuccessMsg(null);
 
-    if (withMetric) {
-      if (metricMrr === '' || metricActiveUsers === '' || metricValuationPre === '') {
-        setError('Поля MRR и Active Users обязательны для заполнения.');
-        return;
-      }
-    
-    }
-
-    const attachments = parseAttachments(attachmentsText);
-
-    const payload: CreatePayload = {
+    const payload = {
       name: name.trim(),
       ...(currentUserId ? { founderId: String(currentUserId) } : {}),
-      stage: stage || undefined,
-      industry: industry.trim() || undefined,
-      shortPitch: shortPitch.trim() || undefined,
+      stage,
+      industry:    industry.trim()    || undefined,
+      shortPitch:  shortPitch.trim()  || undefined,
       description: description.trim() || undefined,
-      website: website.trim() || undefined,
-      logoUrl: logoUrl.trim() || undefined,
-metricsSnapshot: withMetric
-  ? {
-      mrr: Number(metricMrr),
-      users: Number(metricActiveUsers),
-      ...(valuationMode === 'pre' && metricValuationPre !== ''
-        ? { valuationPreMoney: Number(metricValuationPre) }
-        : {}),
-      ...(valuationMode === 'post' && metricValuationPost !== ''
-        ? { valuationPostMoney: Number(metricValuationPost) }
-        : {}),
-    }
-        : { mrr: 0, users: 0 },
-      attachments,
-      visibility: visibility || 'public',
+      website:     website.trim()     || undefined,
+      logoUrl:     logoUrl.trim()     || undefined,
+      metricsSnapshot: withMetric ? {
+        mrr:   Number(metricMrr),
+        users: Number(metricActiveUsers),
+        ...(valuationMode === 'pre'  && metricValuationPre  !== '' ? { valuationPreMoney:  Number(metricValuationPre)  } : {}),
+        ...(valuationMode === 'post' && metricValuationPost !== '' ? { valuationPostMoney: Number(metricValuationPost) } : {}),
+      } : { mrr: 0, users: 0 },
+      attachments:   parseAttachments(attachmentsText),
+      visibility,
       valuationMode,
     };
 
-    setLoading(true);
     try {
       const res = await fetch(API, {
-        method: 'POST',
-        credentials: 'include',
+        method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
       if (!res.ok) {
-        const txt = await res.text();
-        let msg = `Ошибка ${res.status}`;
-        try {
-          const j = JSON.parse(txt);
-          msg = j.error ?? j.message ?? msg;
-        } catch {
-          msg = txt || msg;
-        }
-        throw new Error(msg);
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? j.message ?? `Ошибка ${res.status}`);
       }
-
       const created = await res.json();
-      const createdId = (created && (created.id ?? created._id ?? created.slug)) || null;
+      const createdId = created?.id ?? created?._id ?? created?.slug ?? null;
 
       if (withMetric && createdId) {
-        let parsedOther: Record<string, any> | undefined = undefined;
-        if (metricOther && metricOther.trim()) {
-          try {
-            parsedOther = JSON.parse(metricOther);
-          } catch {
-            throw new Error('Поле "Other" метрики должно быть валидным JSON.');
-          }
+        let parsedOther: Record<string,any> | undefined;
+        if (metricOther.trim()) {
+          try { parsedOther = JSON.parse(metricOther); }
+          catch { throw new Error('Поле "Other" должно быть валидным JSON.'); }
         }
-
-        const isoDate = metricDate ? new Date(metricDate + 'T00:00:00Z').toISOString() : new Date().toISOString();
-
-        const metricPayload: any = {
-          startupId: String(createdId),
-          date: isoDate,
-          mrr: metricMrr === '' ? undefined : Number(metricMrr),
-          activeUsers: metricActiveUsers === '' ? undefined : Number(metricActiveUsers),
-          burnRate: metricBurnRate === '' ? undefined : Number(metricBurnRate),
-          ...(valuationMode === 'pre' && metricValuationPre !== ''
-  ? { valuationPreMoney: Number(metricValuationPre) }
-  : {}),
-...(valuationMode === 'post' && metricValuationPost !== ''
-  ? { valuationPostMoney: Number(metricValuationPost) }
-  : {}),
-          other: parsedOther ?? undefined,
+        const mp: any = {
+          startupId:   String(createdId),
+          date:        new Date(metricDate + 'T00:00:00Z').toISOString(),
+          mrr:         metricMrr         !== '' ? Number(metricMrr)         : undefined,
+          activeUsers: metricActiveUsers !== '' ? Number(metricActiveUsers) : undefined,
+          burnRate:    metricBurnRate    !== '' ? Number(metricBurnRate)    : undefined,
+          ...(valuationMode === 'pre'  && metricValuationPre  !== '' ? { valuationPreMoney:  Number(metricValuationPre)  } : {}),
+          ...(valuationMode === 'post' && metricValuationPost !== '' ? { valuationPostMoney: Number(metricValuationPost) } : {}),
+          other: parsedOther,
         };
-
-        Object.keys(metricPayload).forEach((k) => metricPayload[k] === undefined && delete metricPayload[k]);
-
-        const mres = await fetch(METRICS_API, {
-          method: 'POST',
-          credentials: 'include',
+        Object.keys(mp).forEach(k => mp[k] === undefined && delete mp[k]);
+        await fetch(METRICS_API, {
+          method: 'POST', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(metricPayload),
+          body: JSON.stringify(mp),
         });
-
-        if (!mres.ok) {
-          const txt = await mres.text();
-          let msg = `Ошибка при создании метрики ${mres.status}`;
-          try {
-            const j = JSON.parse(txt);
-            msg = j.error ?? j.message ?? msg;
-          } catch {
-            msg = txt || msg;
-          }
-          setError(`Стартап создан, но не удалось создать метрику: ${msg}`);
-          setSuccessMsg('Стартап создан (метрика не создана).');
-          setTimeout(() => {
-            if (createdId) nav(`/startups/${encodeURIComponent(String(createdId))}`);
-          }, 800);
-          return;
-        }
       }
 
-      setSuccessMsg('Стартап успешно создан.');
-      if (createdId) {
-        nav(`/startups/${encodeURIComponent(String(createdId))}`);
-      }
-    } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setSuccessMsg('Стартап успешно создан!');
+      if (createdId) setTimeout(() => nav(`/startups/${encodeURIComponent(String(createdId))}`), 600);
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
     } finally {
       setLoading(false);
     }
   }
 
+  const numField = (
+    val: number | '',
+    set: (v: number | '') => void,
+    ph: string
+  ) => (
+    <input type="number" className="cs-input" placeholder={ph} value={val}
+      onChange={e => set(e.target.value === '' ? '' : Number(e.target.value))} />
+  );
+
+  /* ── Summary helpers ── */
+  const fmt = (n?: number | null) => {
+    if (n == null) return '—';
+    if (n >= 1_000_000) return `$${(n/1_000_000).toFixed(1)}M`;
+    if (n >= 1_000)     return `$${(n/1_000).toFixed(0)}K`;
+    return `$${n}`;
+  };
+
+  /* ── Render ── */
   return (
-    <div className="create-startup-container">
-      <div className="create-startup-wrapper">
-        <div className="create-startup-header">
-          <h1 className="create-startup-title">
-            <PlusSquare size={28} />
-            Создать стартап
-            <Sparkles size={24} />
-          </h1>
-          <p className="create-startup-subtitle">Расскажите о своём проекте</p>
+    <div className="cs-root">
+
+      {/* ════ LEFT PANEL ════ */}
+      <aside className="cs-left">
+        <div className="cs-brand">
+          <div className="cs-logo">
+            <div className="cs-logo-icon">₸</div>
+            <span className="cs-logo-text">Fintech Hub</span>
+          </div>
+
+          <div className="cs-headline">
+            <div className="cs-headline-eyebrow">// новый стартап</div>
+            <h2 className="cs-headline-title">
+              Запусти свою <em>идею</em> в мир
+            </h2>
+            <p className="cs-headline-sub">
+              Заполни 4 шага — и твой стартап появится в каталоге для инвесторов.
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="create-startup-form">
-          {error && <div className="alert-message alert-error">{error}</div>}
-          {successMsg && <div className="alert-message alert-success">{successMsg}</div>}
+        {/* Step tracker */}
+        <div className="cs-steps">
+          {WIZARD_STEPS.map((ws, i) => (
+            <div
+              key={i}
+              className={`cs-step ${i === step ? 'active' : ''} ${i < step ? 'done' : ''}`}
+              onClick={() => i < step && setStep(i)}
+            >
+              <div className="cs-step-dot">
+                {i < step ? <Check size={13} /> : String(i + 1).padStart(2, '0')}
+              </div>
+              <div className="cs-step-label">
+                <div className="cs-step-name">{ws.name}</div>
+                <div className="cs-step-desc">{ws.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
 
-          <div className="form-group">
-            <label className="form-label">Название</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="form-input"
-              placeholder="QazTech"
-            />
-          </div>
+        <p className="cs-footer-quote">
+          «Хорошая идея без исполнения — просто мечта. Хорошая идея с командой — история успеха.»
+        </p>
+      </aside>
 
-          <div className="form-grid">
-            <div className="form-group">
-              <label className="form-label">Стадия</label>
-              <select value={stage} onChange={(e) => setStage(e.target.value)} className="form-select">
-                <option value="idea">Идея</option>
-                <option value="pre-seed">Pre-seed</option>
-                <option value="seed">Seed</option>
-                <option value="series-a">Series A</option>
-                <option value="growth">Growth</option>
-                <option value="mature">Mature</option>
-              </select>
+      {/* ════ RIGHT PANEL ════ */}
+      <main className="cs-right">
+
+        {/* ── STEP 0: Identity ── */}
+        {step === 0 && (
+          <div className="cs-panel" key="step0">
+            <div className="cs-panel-header">
+              <div className="cs-panel-step-tag">// шаг 01 из 04</div>
+              <h1 className="cs-panel-title">Расскажи о своём проекте</h1>
+              <p className="cs-panel-subtitle">Название, суть и позиционирование на рынке</p>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Отрасль</label>
-              <input
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
-                className="form-input"
-                placeholder="Fintech"
-              />
+            {error && <div className="cs-alert cs-alert-error">{error}</div>}
+
+            <div className="cs-fields">
+              <div className="cs-field">
+                <label className="cs-label">Название стартапа <span className="cs-label-req">*</span></label>
+                <input className="cs-input" placeholder="QazTech" value={name}
+                  onChange={e => setName(e.target.value)} />
+              </div>
+
+              <div className="cs-field">
+                <label className="cs-label">Стадия развития</label>
+                <div className="cs-stage-grid">
+                  {STAGES.map(s => (
+                    <button key={s.value} type="button"
+                      className={`cs-stage-btn ${stage === s.value ? 'selected' : ''}`}
+                      onClick={() => setStage(s.value)}>
+                      <span className="cs-stage-emoji">{s.emoji}</span>
+                      <span className="cs-stage-name">{s.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="cs-field">
+                <label className="cs-label">Отрасль</label>
+                <input className="cs-input" placeholder="Fintech, EdTech, HealthTech…" value={industry}
+                  onChange={e => setIndustry(e.target.value)} />
+              </div>
+
+              <div className="cs-field">
+                <label className="cs-label">Краткий питч <span className="cs-label-req">*</span></label>
+                <input className="cs-input" placeholder="Платформа для умных инвестиций в Казахстане" value={shortPitch}
+                  onChange={e => setShortPitch(e.target.value)} />
+              </div>
+
+              <div className="cs-field">
+                <label className="cs-label">Полное описание</label>
+                <textarea className="cs-textarea" placeholder="Расскажите подробнее о проблеме, решении и рынке…" value={description}
+                  onChange={e => setDescription(e.target.value)} />
+              </div>
             </div>
-          </div>
 
-          <div className="form-group">
-            <label className="form-label">Краткий питч</label>
-            <input
-              value={shortPitch}
-              onChange={(e) => setShortPitch(e.target.value)}
-              className="form-input"
-              placeholder="Платформа для умных инвестиций"
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Описание</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="form-textarea"
-              placeholder="Инновационное решение..."
-            />
-          </div>
-
-          <div className="form-grid">
-            <div className="form-group">
-              <label className="form-label">Веб-сайт</label>
-              <input
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-                className="form-input"
-                placeholder="https://qaztech.kz"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Logo URL</label>
-              <div className="logo-preview-wrapper">
-                <input
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  className="form-input logo-preview-input"
-                  placeholder="https://..."
-                />
-                <button type="button" className="btn-clear-logo" onClick={() => setLogoUrl('')}>
-                  <Image size={16} /> Очистить
+            <div className="cs-nav">
+              <div className="cs-nav-left">
+                <span className="cs-progress">01 / 04</span>
+              </div>
+              <div className="cs-nav-right">
+                <button type="button" className="cs-btn cs-btn-ghost" onClick={() => nav('/startups')}>Отмена</button>
+                <button type="button" className="cs-btn cs-btn-next" onClick={next}>
+                  Далее <ArrowRight size={16} />
                 </button>
               </div>
-              {logoUrl && (
-                <div className="logo-preview">
-                  <img src={logoUrl} alt="logo preview" />
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 1: Details ── */}
+        {step === 1 && (
+          <div className="cs-panel" key="step1">
+            <div className="cs-panel-header">
+              <div className="cs-panel-step-tag">// шаг 02 из 04</div>
+              <h1 className="cs-panel-title">Контакты и параметры</h1>
+              <p className="cs-panel-subtitle">Сайт, логотип, видимость и модель оценки</p>
+            </div>
+
+            {error && <div className="cs-alert cs-alert-error">{error}</div>}
+
+            <div className="cs-fields">
+              <div className="cs-field">
+                <label className="cs-label"><Globe size={12} style={{display:'inline'}} /> Веб-сайт</label>
+                <input className="cs-input" placeholder="https://qaztech.kz" value={website}
+                  onChange={e => setWebsite(e.target.value)} />
+              </div>
+
+              <div className="cs-field">
+                <label className="cs-label"><ImageIcon size={12} style={{display:'inline'}} /> Logo URL</label>
+                <div className="cs-logo-row">
+                  <input className="cs-input" placeholder="https://cdn.example.com/logo.png" value={logoUrl}
+                    onChange={e => setLogoUrl(e.target.value)} />
+                  <div className="cs-logo-thumb">
+                    {logoUrl ? <img src={logoUrl} alt="preview" /> : <ImageIcon size={18} />}
+                  </div>
+                </div>
+              </div>
+
+              <div className="cs-field">
+                <label className="cs-label">Вложения (URL через новую строку)</label>
+                <textarea className="cs-textarea" style={{minHeight: 80}}
+                  placeholder={'https://deck.pdf\nhttps://financials.xlsx'}
+                  value={attachmentsText} onChange={e => setAttachmentsText(e.target.value)} />
+              </div>
+
+              <div className="cs-field">
+                <label className="cs-label">Видимость</label>
+                <div className="cs-visibility-row">
+                  <button type="button" className={`cs-vis-btn ${visibility === 'public' ? 'selected' : ''}`}
+                    onClick={() => setVisibility('public')}>
+                    <div className="cs-vis-title">🌍 Публичный</div>
+                    <div className="cs-vis-desc">Виден всем инвесторам в каталоге</div>
+                  </button>
+                  <button type="button" className={`cs-vis-btn ${visibility === 'private' ? 'selected' : ''}`}
+                    onClick={() => setVisibility('private')}>
+                    <div className="cs-vis-title">🔒 Приватный</div>
+                    <div className="cs-vis-desc">Только по прямой ссылке</div>
+                  </button>
+                </div>
+              </div>
+
+              <div className="cs-field">
+                <label className="cs-label">Модель оценки</label>
+                <div className="cs-val-mode">
+                  <button type="button" className={`cs-val-pill ${valuationMode === 'pre' ? 'active' : ''}`}
+                    onClick={() => setValuationMode('pre')}>Pre-money</button>
+                  <button type="button" className={`cs-val-pill ${valuationMode === 'post' ? 'active' : ''}`}
+                    onClick={() => setValuationMode('post')}>Post-money</button>
+                </div>
+              </div>
+            </div>
+
+            <div className="cs-nav">
+              <div className="cs-nav-left">
+                <button type="button" className="cs-btn cs-btn-ghost" onClick={prev}>
+                  <ArrowLeft size={16} /> Назад
+                </button>
+                <span className="cs-progress">02 / 04</span>
+              </div>
+              <div className="cs-nav-right">
+                <button type="button" className="cs-btn cs-btn-next" onClick={next}>
+                  Далее <ArrowRight size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 2: Metrics ── */}
+        {step === 2 && (
+          <div className="cs-panel" key="step2">
+            <div className="cs-panel-header">
+              <div className="cs-panel-step-tag">// шаг 03 из 04</div>
+              <h1 className="cs-panel-title">Первоначальные метрики</h1>
+              <p className="cs-panel-subtitle">Данные сделают ваш профиль убедительнее для инвесторов</p>
+            </div>
+
+            {error && <div className="cs-alert cs-alert-error">{error}</div>}
+
+            <div className="cs-fields">
+              <div
+                className={`cs-metric-toggle ${withMetric ? 'on' : ''}`}
+                onClick={() => setWithMetric(v => !v)}
+              >
+                <div className="cs-toggle-switch" />
+                <div className="cs-toggle-label">
+                  <div className="cs-toggle-title">
+                    <BarChart2 size={14} style={{display:'inline', marginRight: 6}} />
+                    Добавить метрики
+                  </div>
+                  <div className="cs-toggle-sub">MRR, пользователи, оценка компании</div>
+                </div>
+              </div>
+
+              {withMetric && (
+                <div className="cs-metric-fields">
+                  <div className="cs-metric-row">
+                    <div className="cs-field">
+                      <label className="cs-label">Дата</label>
+                      <input type="date" className="cs-input" value={metricDate}
+                        onChange={e => setMetricDate(e.target.value)} />
+                    </div>
+                    <div className="cs-field">
+                      <label className="cs-label">MRR <span className="cs-label-req">*</span></label>
+                      {numField(metricMrr, setMetricMrr, '50 000')}
+                    </div>
+                    <div className="cs-field">
+                      <label className="cs-label">Active Users <span className="cs-label-req">*</span></label>
+                      {numField(metricActiveUsers, setMetricActiveUsers, '1 200')}
+                    </div>
+                  </div>
+
+                  <div className="cs-metric-row-2">
+                    <div className="cs-field">
+                      <label className="cs-label">Burn Rate</label>
+                      {numField(metricBurnRate, setMetricBurnRate, '30 000')}
+                    </div>
+                    <div className="cs-field">
+                      <label className="cs-label">
+                        {valuationMode === 'pre' ? 'Valuation Pre-money' : 'Valuation Post-money'}
+                        <span className="cs-label-req"> *</span>
+                      </label>
+                      {valuationMode === 'pre'
+                        ? numField(metricValuationPre,  setMetricValuationPre,  '1 500 000')
+                        : numField(metricValuationPost, setMetricValuationPost, '2 000 000')
+                      }
+                    </div>
+                  </div>
+
+                  <div className="cs-field">
+                    <label className="cs-label">Other (JSON)</label>
+                    <input className="cs-input" placeholder='{"churn":2.3,"arpu":4.5}' value={metricOther}
+                      onChange={e => setMetricOther(e.target.value)} />
+                  </div>
                 </div>
               )}
             </div>
-          </div>
 
-          <div className="form-group">
-            <label className="form-label">Вложения (URL, через новую строку или запятую)</label>
-            <textarea
-              value={attachmentsText}
-              onChange={(e) => setAttachmentsText(e.target.value)}
-              className="form-textarea"
-              style={{ minHeight: '80px' }}
-              placeholder="https://...&#10;https://..."
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Видимость</label>
-            <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className="form-select" style={{ width: '200px' }}>
-              <option value="public">Публичный</option>
-              <option value="private">Приватный</option>
-            </select>
-          </div>
-
-          <hr className="form-divider" />
-
-          <div className="checkbox-group">
-            <input
-              id="withMetric"
-              type="checkbox"
-              checked={withMetric}
-              onChange={(e) => setWithMetric(e.target.checked)}
-              className="checkbox-input"
-            />
-            <label htmlFor="withMetric" className="checkbox-label">
-              Добавить начальную метрику
-            </label>
-            <div className="checkbox-hint">
-              <BarChart2 size={16} /> опционально
-            </div>
-          </div>
-
-          {withMetric && (
-            <div className="metrics-section">
-              <div className="metrics-grid">
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Дата</label>
-                  <input
-                    type="date"
-                    value={metricDate}
-                    onChange={(e) => setMetricDate(e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">MRR</label>
-                  <input
-                    type="number"
-                    value={metricMrr}
-                    onChange={(e) => setMetricMrr(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="form-input"
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Active Users</label>
-                  <input
-                    type="number"
-                    value={metricActiveUsers}
-                    onChange={(e) => setMetricActiveUsers(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="form-input"
-                  />
-                </div>
+            <div className="cs-nav">
+              <div className="cs-nav-left">
+                <button type="button" className="cs-btn cs-btn-ghost" onClick={prev}>
+                  <ArrowLeft size={16} /> Назад
+                </button>
+                <span className="cs-progress">03 / 04</span>
               </div>
-
-              <div className="metrics-grid">
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Burn Rate</label>
-                  <input
-                    type="number"
-                    value={metricBurnRate}
-                    onChange={(e) => setMetricBurnRate(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="form-input"
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-  <label className="form-label">Valuation Model</label>
-  <select
-    value={valuationMode}
-    onChange={(e) => setValuationMode(e.target.value as 'pre' | 'post')}
-    className="form-select"
-  >
-    <option value="pre">Pre-money</option>
-    <option value="post">Post-money</option>
-  </select>
-</div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  {valuationMode === 'pre' ? (
-  <div className="form-group" style={{ marginBottom: 0 }}>
-    <label className="form-label">Valuation Pre-money</label>
-    <input
-      type="number"
-      value={metricValuationPre}
-      onChange={(e) =>
-        setMetricValuationPre(e.target.value === '' ? '' : Number(e.target.value))
-      }
-      className="form-input"
-      placeholder="например 1500000"
-    />
-  </div>
-) : (
-  <div className="form-group" style={{ marginBottom: 0 }}>
-    <label className="form-label">Valuation Post-money</label>
-    <input
-      type="number"
-      value={metricValuationPost}
-      onChange={(e) =>
-        setMetricValuationPost(e.target.value === '' ? '' : Number(e.target.value))
-      }
-      className="form-input"
-      placeholder="например 2000000"
-    />
-  </div>
-)}
-                </div>
-              </div>
-
-              <div className="form-group" style={{ marginBottom: 0, marginTop: '16px' }}>
-                <label className="form-label">Other (JSON)</label>
-                <input
-                  value={metricOther}
-                  onChange={(e) => setMetricOther(e.target.value)}
-                  className="form-input"
-                  placeholder='{"churn":2.3,"arpu":4.5}'
-                />
+              <div className="cs-nav-right">
+                <button type="button" className="cs-btn cs-btn-next" onClick={next}>
+                  Далее <ArrowRight size={16} />
+                </button>
               </div>
             </div>
-          )}
-
-          <div className="form-actions">
-            <button type="button" onClick={() => nav('/startups')} className="btn btn-cancel">
-              Отмена
-            </button>
-            <button type="submit" disabled={loading} className="btn btn-submit">
-              {loading ? 'Создание...' : 'Создать стартап'}
-            </button>
           </div>
-        </form>
-      </div>
+        )}
+
+        {/* ── STEP 3: Review ── */}
+        {step === 3 && (
+          <div className="cs-panel" key="step3">
+            <div className="cs-panel-header">
+              <div className="cs-panel-step-tag">// шаг 04 из 04</div>
+              <h1 className="cs-panel-title">Проверьте и создайте</h1>
+              <p className="cs-panel-subtitle">Всё выглядит правильно? Нажмите «Создать».</p>
+            </div>
+
+            {error      && <div className="cs-alert cs-alert-error">{error}</div>}
+            {successMsg && <div className="cs-alert cs-alert-success">{successMsg}</div>}
+
+            <div className="cs-summary">
+              {/* Block 1 */}
+              <div className="cs-summary-block">
+                <div className="cs-summary-block-title">
+                  Идентификация
+                  <button className="cs-edit-link" onClick={() => setStep(0)}>изменить</button>
+                </div>
+                <div className="cs-summary-row">
+                  <span className="cs-summary-key">Название</span>
+                  <span className="cs-summary-val accent">{name || '—'}</span>
+                </div>
+                <div className="cs-summary-row">
+                  <span className="cs-summary-key">Стадия</span>
+                  <span className="cs-summary-val">
+                    {STAGES.find(s => s.value === stage)?.emoji} {STAGES.find(s => s.value === stage)?.label}
+                  </span>
+                </div>
+                <div className="cs-summary-row">
+                  <span className="cs-summary-key">Отрасль</span>
+                  <span className="cs-summary-val">{industry || '—'}</span>
+                </div>
+                <div className="cs-summary-row">
+                  <span className="cs-summary-key">Питч</span>
+                  <span className="cs-summary-val">{shortPitch || '—'}</span>
+                </div>
+              </div>
+
+              {/* Block 2 */}
+              <div className="cs-summary-block">
+                <div className="cs-summary-block-title">
+                  Детали
+                  <button className="cs-edit-link" onClick={() => setStep(1)}>изменить</button>
+                </div>
+                <div className="cs-summary-row">
+                  <span className="cs-summary-key">Сайт</span>
+                  <span className="cs-summary-val accent">{website || '—'}</span>
+                </div>
+                <div className="cs-summary-row">
+                  <span className="cs-summary-key">Видимость</span>
+                  <span className="cs-summary-val">{visibility === 'public' ? '🌍 Публичный' : '🔒 Приватный'}</span>
+                </div>
+                <div className="cs-summary-row">
+                  <span className="cs-summary-key">Модель оценки</span>
+                  <span className="cs-summary-val purple">{valuationMode.toUpperCase()}-money</span>
+                </div>
+                <div className="cs-summary-row">
+                  <span className="cs-summary-key">Вложений</span>
+                  <span className="cs-summary-val">{parseAttachments(attachmentsText).length} файл(ов)</span>
+                </div>
+              </div>
+
+              {/* Block 3 */}
+              <div className="cs-summary-block">
+                <div className="cs-summary-block-title">
+                  Метрики
+                  <button className="cs-edit-link" onClick={() => setStep(2)}>изменить</button>
+                </div>
+                {!withMetric ? (
+                  <div className="cs-summary-row">
+                    <span className="cs-summary-key">Статус</span>
+                    <span className="cs-summary-val">Метрики не добавлены</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="cs-summary-row">
+                      <span className="cs-summary-key">MRR</span>
+                      <span className="cs-summary-val green">{fmt(metricMrr === '' ? null : Number(metricMrr))}</span>
+                    </div>
+                    <div className="cs-summary-row">
+                      <span className="cs-summary-key">Active Users</span>
+                      <span className="cs-summary-val">{metricActiveUsers !== '' ? Number(metricActiveUsers).toLocaleString() : '—'}</span>
+                    </div>
+                    {metricBurnRate !== '' && (
+                      <div className="cs-summary-row">
+                        <span className="cs-summary-key">Burn Rate</span>
+                        <span className="cs-summary-val">{fmt(Number(metricBurnRate))}</span>
+                      </div>
+                    )}
+                    <div className="cs-summary-row">
+                      <span className="cs-summary-key">Valuation ({valuationMode})</span>
+                      <span className="cs-summary-val purple">
+                        {fmt(valuationMode === 'pre'
+                          ? (metricValuationPre  !== '' ? Number(metricValuationPre)  : null)
+                          : (metricValuationPost !== '' ? Number(metricValuationPost) : null)
+                        )}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="cs-nav">
+              <div className="cs-nav-left">
+                <button type="button" className="cs-btn cs-btn-ghost" onClick={prev}>
+                  <ArrowLeft size={16} /> Назад
+                </button>
+                <span className="cs-progress">04 / 04</span>
+              </div>
+              <div className="cs-nav-right">
+                <button type="button" className="cs-btn cs-btn-submit" onClick={handleSubmit} disabled={loading}>
+                  {loading ? 'Создание…' : <><Check size={16} /> Создать стартап</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
     </div>
   );
 }
