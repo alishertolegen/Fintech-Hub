@@ -16,7 +16,7 @@ type Investment = {
   amount: number;
   currency?: string;
   equityPercent: number;
-  valuationPostMoney: number;
+  valuationPostMoney?: number | null;
   status: string;
   createdAt: string;
   updatedAt?: string;
@@ -109,8 +109,14 @@ export default function MyInvestmentsPage() {
   }, [user]);
 
   // Вычисляем статистику
-  const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
-  const totalEquity = investments.reduce((sum, inv) => sum + inv.equityPercent, 0);
+  const totalInvested = investments.reduce(
+  (sum, inv) => sum + (inv.amount || 0),
+  0
+);
+  const totalEquity = investments.reduce(
+  (sum, inv) => sum + (inv.equityPercent || 0) * 100,
+  0
+);
   const activeInvestments = investments.filter(inv => inv.status === 'active' || inv.status === 'completed').length;
 
   if (loading) {
@@ -138,7 +144,8 @@ export default function MyInvestmentsPage() {
       </div>
     );
   }
-
+const avgTicket =
+  investments.length > 0 ? Math.round(totalInvested / investments.length) : 0;
   return (
     <div className="investments-page-container">
       <div className="investments-header">
@@ -173,7 +180,7 @@ export default function MyInvestmentsPage() {
         <div className="stat-card">
           <div className="stat-label">Средний чек</div>
           <div className="stat-value">
-            ${Math.round(totalInvested / investments.length).toLocaleString()}
+            ${avgTicket.toLocaleString()}
           </div>
           <div className="stat-change">на инвестицию</div>
         </div>
@@ -243,15 +250,19 @@ export default function MyInvestmentsPage() {
 
                   <div className="detail-item">
                     <span className="detail-label">Доля</span>
-                    <span className="detail-value">{inv.equityPercent}%</span>
+                    <span className="detail-value">
+  <span className="detail-value">
+  {(inv.equityPercent * 100).toFixed(2)}%
+</span>
+</span>
                   </div>
 
-                  <div className="detail-item">
-                    <span className="detail-label">Оценка Post-Money</span>
-                    <span className="detail-value">
-                      ${inv.valuationPostMoney.toLocaleString()}
-                    </span>
-                  </div>
+<div className="detail-item">
+  <span className="detail-label">Оценка Post-Money</span>
+  <span className="detail-value">
+    ${ (inv.valuationPostMoney ?? 0).toLocaleString() }
+  </span>
+</div>
 
                   <div className="detail-item">
                     <span className="detail-label">Валюта</span>

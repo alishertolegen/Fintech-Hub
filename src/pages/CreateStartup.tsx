@@ -19,6 +19,7 @@ type CreatePayload = {
   metricsSnapshot?: { mrr?: number; users?: number; valuationPreMoney?: number; valuationPostMoney?: number };
   attachments?: string[];
   visibility?: string;
+  valuationMode?: string;
 };
 
 export default function CreateStartup(): JSX.Element {
@@ -54,6 +55,9 @@ export default function CreateStartup(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  const [valuationMode, setValuationMode] = useState<'pre' | 'post'>('pre');
+const [metricValuationPost, setMetricValuationPost] = useState<number | ''>('');
+
   function parseAttachments(text: string): string[] {
     if (!text) return [];
     return text
@@ -66,6 +70,23 @@ export default function CreateStartup(): JSX.Element {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
+    if (withMetric) {
+  if (
+    valuationMode === 'pre' &&
+    (metricValuationPre === '' || metricValuationPre <= 0)
+  ) {
+    setError('Введите корректную Pre-money valuation');
+    return;
+  }
+
+  if (
+    valuationMode === 'post' &&
+    (metricValuationPost === '' || metricValuationPost <= 0)
+  ) {
+    setError('Введите корректную Post-money valuation');
+    return;
+  }
+}
 
     if (!name.trim()) {
       setError('Название стартапа обязательно.');
@@ -77,6 +98,7 @@ export default function CreateStartup(): JSX.Element {
         setError('Поля MRR и Active Users обязательны для заполнения.');
         return;
       }
+    
     }
 
     const attachments = parseAttachments(attachmentsText);
@@ -90,15 +112,21 @@ export default function CreateStartup(): JSX.Element {
       description: description.trim() || undefined,
       website: website.trim() || undefined,
       logoUrl: logoUrl.trim() || undefined,
-      metricsSnapshot: withMetric
-        ? {
-            mrr: Number(metricMrr),
-            users: Number(metricActiveUsers),
-            ...(metricValuationPre === '' ? {} : { valuationPreMoney: Number(metricValuationPre) }),
-          }
+metricsSnapshot: withMetric
+  ? {
+      mrr: Number(metricMrr),
+      users: Number(metricActiveUsers),
+      ...(valuationMode === 'pre' && metricValuationPre !== ''
+        ? { valuationPreMoney: Number(metricValuationPre) }
+        : {}),
+      ...(valuationMode === 'post' && metricValuationPost !== ''
+        ? { valuationPostMoney: Number(metricValuationPost) }
+        : {}),
+    }
         : { mrr: 0, users: 0 },
       attachments,
       visibility: visibility || 'public',
+      valuationMode,
     };
 
     setLoading(true);
@@ -143,7 +171,12 @@ export default function CreateStartup(): JSX.Element {
           mrr: metricMrr === '' ? undefined : Number(metricMrr),
           activeUsers: metricActiveUsers === '' ? undefined : Number(metricActiveUsers),
           burnRate: metricBurnRate === '' ? undefined : Number(metricBurnRate),
-          valuationPreMoney: metricValuationPre === '' ? undefined : Number(metricValuationPre),
+          ...(valuationMode === 'pre' && metricValuationPre !== ''
+  ? { valuationPreMoney: Number(metricValuationPre) }
+  : {}),
+...(valuationMode === 'post' && metricValuationPost !== ''
+  ? { valuationPostMoney: Number(metricValuationPost) }
+  : {}),
           other: parsedOther ?? undefined,
         };
 
@@ -367,14 +400,44 @@ export default function CreateStartup(): JSX.Element {
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Valuation Pre</label>
-                  <input
-                    type="number"
-                    value={metricValuationPre}
-                    onChange={(e) => setMetricValuationPre(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="form-input"
-                    placeholder="например 1500000"
-                  />
+  <label className="form-label">Valuation Model</label>
+  <select
+    value={valuationMode}
+    onChange={(e) => setValuationMode(e.target.value as 'pre' | 'post')}
+    className="form-select"
+  >
+    <option value="pre">Pre-money</option>
+    <option value="post">Post-money</option>
+  </select>
+</div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  {valuationMode === 'pre' ? (
+  <div className="form-group" style={{ marginBottom: 0 }}>
+    <label className="form-label">Valuation Pre-money</label>
+    <input
+      type="number"
+      value={metricValuationPre}
+      onChange={(e) =>
+        setMetricValuationPre(e.target.value === '' ? '' : Number(e.target.value))
+      }
+      className="form-input"
+      placeholder="например 1500000"
+    />
+  </div>
+) : (
+  <div className="form-group" style={{ marginBottom: 0 }}>
+    <label className="form-label">Valuation Post-money</label>
+    <input
+      type="number"
+      value={metricValuationPost}
+      onChange={(e) =>
+        setMetricValuationPost(e.target.value === '' ? '' : Number(e.target.value))
+      }
+      className="form-input"
+      placeholder="например 2000000"
+    />
+  </div>
+)}
                 </div>
               </div>
 

@@ -47,6 +47,7 @@ type Startup = {
   createdAt?: string | number | Date;
   updatedAt?: string | number | Date;
   visibility?: string;
+  valuationMode?: 'pre' | 'post';
 };
 
 type User = {
@@ -416,10 +417,6 @@ export default function StartupPage(): JSX.Element {
       alert('Нужна авторизация и стартап');
       return;
     }
-    if (!offerTitle || !offerAmount || !offerEquity) {
-      alert('Заполните заголовок, сумму и долю');
-      return;
-    }
     setOfferSubmitting(true);
     try {
       const payload = {
@@ -427,7 +424,7 @@ export default function StartupPage(): JSX.Element {
         investorId: user.id,
         title: offerTitle,
         amount: Number(offerAmount),
-        equityPercent: Number(offerEquity),
+        equityPercent: Number(calculatedEquity.toFixed(4)),
         type: 'term-sheet',
         visibility: offerVisibility,
         status: 'sent',
@@ -506,6 +503,26 @@ export default function StartupPage(): JSX.Element {
   
   const isInvestor = user && user.role === 'investor';
 
+  const valuationMode = startup?.valuationMode ?? 'pre';
+
+const currentPre =
+  lastMetric?.valuationPreMoney ??
+  startup?.metricsSnapshot?.valuationPreMoney ??
+  0;
+
+const currentPost =
+  lastMetric?.valuationPostMoney ??
+  startup?.metricsSnapshot?.valuationPostMoney ??
+  0;
+
+const calculatedEquity =
+  offerAmount && Number(offerAmount) > 0
+    ? valuationMode === 'pre'
+      ? (Number(offerAmount) / (currentPre + Number(offerAmount))) * 100
+      : currentPost > 0
+        ? (Number(offerAmount) / currentPost) * 100
+        : 0
+    : 0;
 return (
   <div className="startup-page-container">
     {loading && <div className="page-loading">Загрузка...</div>}
@@ -699,6 +716,9 @@ return (
         {/* VALUATION */}
         <section className="content-section">
           <h3 className="section-title">Оценка компании</h3>
+          <div className="valuation-mode-badge">
+  Mode: {startup.valuationMode?.toUpperCase()}
+</div>
           <div className="valuation-grid">
             <div className="valuation-card">
               <div className="valuation-label">Valuation Pre-Money</div>
@@ -759,24 +779,28 @@ return (
                     className="form-input"
                     required
                   />
-                  <div className="form-row">
-                    <input
-                      placeholder="Сумма (USD)"
-                      type="number"
-                      value={offerAmount}
-                      onChange={(e) => setOfferAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                      className="form-input"
-                      required
-                    />
-                    <input
-                      placeholder="% доли"
-                      type="number"
-                      value={offerEquity}
-                      onChange={(e) => setOfferEquity(e.target.value === '' ? '' : Number(e.target.value))}
-                      className="form-input"
-                      required
-                    />
-                  </div>
+<div className="form-row">
+  <input
+    placeholder="Сумма (USD)"
+    type="number"
+    value={offerAmount}
+    onChange={(e) =>
+      setOfferAmount(e.target.value === '' ? '' : Number(e.target.value))
+    }
+    className="form-input"
+    required
+  />
+
+  <div className="equity-preview">
+    {offerAmount ? (
+      <span>
+        ≈ {calculatedEquity.toFixed(2)}%
+      </span>
+    ) : (
+      <span>—</span>
+    )}
+  </div>
+</div>
                   <div className="form-footer">
                     <label className="form-label">Видимость:</label>
                     <select value={offerVisibility} onChange={(e) => setOfferVisibility(e.target.value as any)} className="form-select">

@@ -6,7 +6,12 @@ import './StartupsList.css';
 
 const API = 'http://localhost:8080/api/startups';
 
-type MetricsSnapshot = { mrr?: number | null; users?: number | null; valuationPreMoney?: number | null };
+type MetricsSnapshot = { 
+  mrr?: number | null; 
+  users?: number | null; 
+  valuationPreMoney?: number | null;
+  valuationPostMoney?: number | null;
+};
 
 type Startup = {
   id?: string;
@@ -25,6 +30,7 @@ type Startup = {
   createdAt?: string | number | Date;
   updatedAt?: string | number | Date;
   visibility?: string;
+  valuationMode?: 'pre' | 'post' | null;
 };
 
 function Logo({ name, url }: { name?: string; url?: string }) {
@@ -198,6 +204,12 @@ export default function StartupsList(): JSX.Element {
       <div className="startups-grid">
         {filtered.map((s) => {
           const key = s.id ?? s._id ?? s.slug ?? Math.random().toString(36).slice(2, 9);
+          const valuationMode = s.valuationMode ?? 'pre';
+
+const activeValuation =
+  valuationMode === 'pre'
+    ? s.metricsSnapshot?.valuationPreMoney
+    : s.metricsSnapshot?.valuationPostMoney;
           return (
             <article key={key} className="startup-card">
               <div className="startup-logo">
@@ -216,10 +228,17 @@ export default function StartupsList(): JSX.Element {
                   </div>
 
                   <div className="startup-metrics">
-                    <div>MRR: <strong>{s.metricsSnapshot?.mrr ?? 0}</strong></div>
-                    <div>Users: <strong>{s.metricsSnapshot?.users ?? 0}</strong></div>
-                    <div>Valuation: <strong>{s.metricsSnapshot?.valuationPreMoney ?? 0}</strong></div>
-                    <div className="created-date">{formatDate(s.createdAt)}</div>
+<div>MRR: <strong>{s.metricsSnapshot?.mrr ?? 0}</strong></div>
+<div>Users: <strong>{s.metricsSnapshot?.users ?? 0}</strong></div>
+
+<div>
+  Valuation ({valuationMode.toUpperCase()}):
+  <strong> {activeValuation ?? 0}</strong>
+</div>
+
+<div className="created-date">
+  {formatDate(s.createdAt)}
+</div>
                   </div>
                 </div>
 
