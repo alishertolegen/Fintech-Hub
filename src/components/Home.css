@@ -21,7 +21,16 @@
   --green:       #6ae8a0;
   --col-gap:     clamp(16px, 2vw, 32px);
 }
-
+.bg-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  opacity: 0.08;
+  pointer-events: none;
+}
 /* ============================================================
    BASE
    ============================================================ */

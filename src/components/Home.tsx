@@ -59,6 +59,9 @@ const FEATURES = [
 const Home: React.FC = () => {
   return (
     <div className="home-container">
+      <video className="bg-video" autoPlay muted loop playsInline>
+    <source src="/bg1.mp4" type="video/mp4" />
+  </video>
 
       {/* ═══════════════════ TICKER BAR ═══════════════════ */}
       <div className="ticker-bar">
@@ -280,7 +283,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* ═══════════════════ FOOTER ═══════════════════ */}
+      {/* ═══════════════════ FOOTER ═══════════════════
       <footer className="footer">
         <div className="footer-masthead">
           <div className="footer-logo-text">
@@ -328,7 +331,7 @@ const Home: React.FC = () => {
             <span className="footer-bottom-link">Cookies</span>
           </div>
         </div>
-      </footer>
+      </footer> */}
 
     </div>
   );

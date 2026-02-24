@@ -94,3 +94,20 @@ body {
     radial-gradient(circle at 80% 70%, rgba(255,179,144,0.04), transparent 40%),
     var(--bg);
 }
+/* App.css */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+}
+
+/* базовые стили футера (можешь заменить на свои) */
+.footer {
+  padding: 28px 20px;
+  background: #0b0b0b;
+  color: #fff;
+}

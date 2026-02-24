@@ -1,3 +1,4 @@
+// src/App.tsx
 import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
@@ -7,11 +8,12 @@ import Profile from './components/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import StartupPage from './pages/StartupPage';
-import EditStartup from './pages/EditStartup'; // <-- added
+import EditStartup from './pages/EditStartup';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import MyStartupsPage from './pages/MyStartupsPage';
 import CreateStartup from './pages/CreateStartup';
 import MyInvestmentsPage from './pages/MyInvestmentsPage';
+import Footer from './components/Footer';
 import './App.css';
 
 function App() {
@@ -28,6 +30,8 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          {/* если пользователь попал на любой другой путь в режиме auth — редиректим на /login */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       ) : (
         <main className="main-content">
@@ -40,6 +44,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/profile"
               element={
@@ -48,6 +53,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/startups"
               element={
@@ -93,6 +99,9 @@ function App() {
           </Routes>
         </main>
       )}
+
+      {/* footer показываем только на не-auth страницах */}
+      {!isAuthPage && <Footer />}
     </div>
   );
 }

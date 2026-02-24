@@ -29,9 +29,14 @@ export default function Navbar() {
   }, [isMenuOpen]);
 
   useEffect(() => {
-    document.body.style.overflow = isMenuOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [isMenuOpen]);
+  document.body.style.overflow = isMenuOpen ? 'hidden' : '';
+  return () => { document.body.style.overflow = ''; };
+}, [isMenuOpen]);
+
+// Scroll to top on route change
+useEffect(() => {
+  window.scrollTo({ top: 0, behavior: 'auto' });
+}, [location.pathname]);
 
   // Track active link position for pill indicator
   useEffect(() => {
