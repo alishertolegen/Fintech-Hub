@@ -7,6 +7,7 @@ import Profile from './components/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import StartupPage from './pages/StartupPage';
+import EditStartup from './pages/EditStartup'; // <-- added
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import MyStartupsPage from './pages/MyStartupsPage';
 import CreateStartup from './pages/CreateStartup';
@@ -16,7 +17,6 @@ import './App.css';
 function App() {
   const location = useLocation();
 
-  // Скрываем Navbar и main-content на страницах логина и регистрации
   const isAuthPage =
     location.pathname === '/login' || location.pathname === '/register';
 
@@ -25,13 +25,11 @@ function App() {
       {!isAuthPage && <Navbar />}
 
       {isAuthPage ? (
-        // Для страниц авторизации - без обёртки main-content
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Routes>
       ) : (
-        // Для остальных страниц - с обёрткой main-content
         <main className="main-content">
           <Routes>
             <Route
@@ -58,9 +56,21 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            {/* EDIT route must come before /startups/:slug */}
+            <Route
+              path="/startups/edit/:id"
+              element={
+                <ProtectedRoute>
+                  <EditStartup />
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="/startups/:slug" element={<StartupPage />} />
+
             <Route path="/my-startups" element={<MyStartupsPage />} />
-            
+
             <Route
               path="/my-investments"
               element={
@@ -70,7 +80,15 @@ function App() {
               }
             />
 
-            <Route path="/startups/create" element={<CreateStartup />} />
+            <Route
+              path="/startups/create"
+              element={
+                <ProtectedRoute>
+                  <CreateStartup />
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

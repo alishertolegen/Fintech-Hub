@@ -268,7 +268,9 @@ useEffect(() => {
   const isInvestor = user?.role === 'investor';
 
   const valuationMode = startup?.valuationMode ?? 'pre';
-  const currentPre    = lastMetric?.valuationPreMoney  ?? startup?.metricsSnapshot?.valuationPreMoney  ?? 0;
+  const currentPre = lastMetric
+  ? (lastMetric.valuationPreMoney ?? 0)
+  : (startup?.metricsSnapshot?.valuationPreMoney ?? 0);
   const currentPost   = lastMetric?.valuationPostMoney ?? startup?.metricsSnapshot?.valuationPostMoney ?? 0;
 
   const calcEquity = offerAmount && Number(offerAmount)>0
@@ -389,7 +391,11 @@ useEffect(() => {
             <div className="sp-val-half">
               <div className="sp-val-mode-chip">PRE</div>
               <div className="sp-val-label">Pre-Money</div>
-              <div className="sp-val-number">{fmt(lastMetric?.valuationPreMoney??startup?.metricsSnapshot?.valuationPreMoney)}</div>
+              <div className="sp-val-number">{fmt(
+  lastMetric
+    ? lastMetric.valuationPreMoney
+    : startup?.metricsSnapshot?.valuationPreMoney
+)}</div>
             </div>
             <div className="sp-val-half">
               <div className="sp-val-mode-chip" style={{background:'rgba(52,211,153,0.08)',borderColor:'rgba(52,211,153,0.2)',color:'var(--accent-3)'}}>POST</div>
@@ -586,10 +592,19 @@ useEffect(() => {
               <ExternalLink size={14}/> Официальный сайт
             </a>
           )}
-          <button className="sp-btn sp-btn-ghost"
-            onClick={()=>navigate(`/startups/edit/${encodeURIComponent(String(idForApi()))}`)}>
-            <Pencil size={14}/> Редактировать
-          </button>
+          <button
+  className="sp-btn sp-btn-ghost"
+  onClick={() => {
+    const id = idForApi();
+    if (!id) {
+      alert("ID стартапа не найден");
+      return;
+    }
+    navigate(`/startups/edit/${id}`);
+  }}
+>
+  <Pencil size={14}/> Редактировать
+</button>
         </div>
         <button className="sp-btn sp-btn-danger" onClick={handleDelete} disabled={deleting}>
           <Trash2 size={14}/> {deleting?'Удаление…':'Удалить стартап'}
