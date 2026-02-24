@@ -292,7 +292,7 @@ export default function Profile() {
                     ) : '—'}
                   </div>
                   <div className="description-full">
-                    <strong className="description-label">Описание</strong>
+                    <strong className="description-label">Описание (в роли инвестора)</strong>
                     <div className="description-text">{investor?.description ?? '—'}</div>
                   </div>
                   <div className="edit-action">
@@ -366,7 +366,7 @@ export default function Profile() {
                   />
                   <textarea
                     className="form-textarea"
-                    placeholder="Описание"
+                    placeholder="Описание (в роли инвестора)"
                     value={investor?.description ?? ''}
                     onChange={(e) => setInvestor((p) => ({ ...(p ?? {}), description: e.target.value }))}
                   />
