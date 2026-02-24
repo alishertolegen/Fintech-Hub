@@ -98,12 +98,8 @@ const Home: React.FC = () => {
           <span className="nav-item">Аналитика</span>
           <span className="nav-item">Жаңалықтар</span>
           <div className="nav-cta">
-            <Link to="/login">
-              <button className="btn-nav btn-nav-ghost">Кіру</button>
-            </Link>
-            <Link to="/register">
-              <button className="btn-nav btn-nav-fill">Тіркелу</button>
-            </Link>
+
+
           </div>
         </nav>
       </header>
@@ -160,10 +156,7 @@ const Home: React.FC = () => {
               шешім қабылдаңыз, дұрыс серіктес табыңыз.
             </p>
             <div className="hero-actions">
-              <Link to="/register">
-                <button className="btn-hero-primary">Бастау →</button>
-              </Link>
-              <button className="btn-hero-secondary">Толығырақ</button>
+
             </div>
           </div>
 
@@ -270,12 +263,6 @@ const Home: React.FC = () => {
             Дұрыс серіктес табу — бір тіркелуден басталады.
           </p>
           <div className="cta-buttons">
-            <Link to="/register">
-              <button className="btn-cta-primary">Тіркелу →</button>
-            </Link>
-            <Link to="/login">
-              <button className="btn-cta-secondary">Кіру</button>
-            </Link>
           </div>
         </div>
 

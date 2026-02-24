@@ -1,4 +1,96 @@
+
+:root {
+  --bg: #26282f; /* основной фон */
+  --surface: rgba(255, 245, 240, 0.07); /* фон карточек */
+  --surface-hover: rgba(255, 245, 240, 0.12);
+  --border: rgba(255, 235, 230, 0.12);
+  --border-glow: rgba(255, 170, 145, 0.3);
+
+  --accent: #ff927a;  /* основной акцент — коралловый */
+  --accent-2: #ffb390; /* вторичный акцент — мягкий персик */
+  --accent-3: #ffd3b0; /* третичный акцент — светлый персиковый */
+
+  --text-primary: #fff8f2; 
+  --text-secondary: rgba(255, 245, 240, 0.75);
+  --text-muted: rgba(255, 245, 240, 0.55);
+
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --radius: 20px;
+  --radius-sm: 12px;
+}
+
+body {
+  padding-top: 72px; /* высота навбара */
+}
 body {
   margin: 0;
   background: #080c14;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+.startups-container {
+  width: 100%;
+  min-height: 100vh;
+  padding: 52px 24px 80px;
+  margin: 0;
+  background: var(--bg);
+  max-width: none; /* убираем ограничение */
+}
+
+/* ── Карточки ── */
+.startup-card {
+  background: rgba(255, 245, 240, 0.06); 
+  border: 1px solid var(--border);
+}
+
+.startup-card:hover {
+  border-color: var(--accent);
+  box-shadow:
+    0 20px 40px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(255,245,240,0.06),
+    0 0 30px rgba(255,146,122,0.18);
+}
+
+/* Лого */
+.logo-initials {
+  background: linear-gradient(135deg, rgba(255,146,122,0.15), rgba(255,179,144,0.15));
+  border: 1px solid rgba(255,146,122,0.3);
+  color: var(--accent);
+}
+
+/* Stage badge */
+.stage-badge {
+  background: linear-gradient(135deg, rgba(255,146,122,0.18), rgba(255,179,144,0.18));
+  border: 1px solid rgba(255,146,122,0.35);
+  color: var(--accent);
+}
+
+/* Кнопки */
+.btn-details {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+}
+
+.btn-details:hover {
+  box-shadow:
+    0 10px 26px rgba(255,146,122,0.35),
+    inset 0 0 14px rgba(255,255,255,0.1);
+}
+
+/* Ссылки */
+.meta-link {
+  color: var(--accent);
+  text-shadow: 0 0 6px rgba(255,146,122,0.2);
+}
+
+/* Ambient фон контейнера */
+.startups-container {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,146,122,0.05), transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(255,179,144,0.04), transparent 40%),
+    var(--bg);
 }

@@ -64,7 +64,7 @@ body::after {
    TICKER — TOP BAR
    ============================================================ */
 .ticker-bar {
-  position: sticky;
+  position: initial;
   top: 0;
   z-index: 100;
   background: var(--bg);
