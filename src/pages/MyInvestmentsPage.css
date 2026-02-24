@@ -527,3 +527,18 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.exit-button {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background: #ff4d4f;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.exit-button:hover {
+  background: #d9363e;
+}

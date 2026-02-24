@@ -11,6 +11,7 @@ const USERS_API       = 'http://localhost:8080/api/users';
 const OFFERS_API      = 'http://localhost:8080/api/offers';
 const INVESTMENTS_API = 'http://localhost:8080/api/investments';
 
+
 /* ── Types ── */
 type MetricsSnapshot = { mrr?: number | null; users?: number | null; valuationPreMoney?: number | null; valuationPostMoney?: number | null; };
 type MetricRecord    = { _id?: string; startupId?: string; date?: string | number | Date; mrr?: number | null; activeUsers?: number | null; burnRate?: number | null; valuationPreMoney?: number | null; valuationPostMoney?: number | null; other?: Record<string,any> | null; };
@@ -18,7 +19,16 @@ type Startup         = { id?: string; _id?: string; name?: string; slug?: string
 type User            = { id?: string; _id?: string; name?: string; username?: string; avatarUrl?: string; role?: string; };
 type Offer           = { id?: string; _id?: string; startupId?: string; investorId?: string; title?: string; amount?: number; equityPercent?: number; type?: string; visibility?: string; status?: string; createdAt?: string | number | Date; note?: string; };
 type Investment      = { id?: string; _id?: string; startupId?: string; investorId?: string; amount?: number; currency?: string; equityPercent?: number; valuationPostMoney?: number; status?: string; createdAt?: string | number | Date; note?: string; };
-
+type ExitRequest = {
+  id?: string;
+  _id?: string;
+  investmentId?: string;
+  investorId?: string;
+  price?: number;
+  status?: 'PENDING'|'ACCEPTED'|'REJECTED';
+  paymentStatus?: 'PENDING'|'PAID';
+  createdAt?: string|number|Date;
+};
 /* ── Helpers ── */
 const fmt = (n?: number | null) => {
   if (n == null) return '—';
@@ -106,7 +116,36 @@ export default function StartupPage(): JSX.Element {
   const [offerAmount,     setOfferAmount]     = useState<number|''>('');
   const [offerVisibility, setOfferVisibility] = useState<'private'|'public'>('private');
   const [offerSubmitting, setOfferSubmitting] = useState(false);
+  const [exitRequests, setExitRequests] = useState<ExitRequest[]|null>(null);
+const [exitLoading, setExitLoading] = useState(false);
+const [exitError, setExitError] = useState<string|null>(null);
 
+const loadExitRequests = async () => {
+  if(!startup) return;
+  const id = idForApi(); if(!id) return;
+
+  setExitLoading(true);
+  setExitError(null);
+
+  try {
+const res = await fetch(`http://localhost:8080/api/exit-requests?startupId=${encodeURIComponent(String(id))}`, {
+  headers: token ? { Authorization: `Bearer ${token}` } : undefined
+});
+
+    if (!res.ok) {
+      // если пришёл HTML или ошибка
+      const text = await res.text();
+      throw new Error(`Ошибка ${res.status}: ${text}`);
+    }
+
+    const data = await res.json(); // теперь это точно JSON
+    setExitRequests(Array.isArray(data) ? data : (data?.data ?? []));
+  } catch(e:any) {
+    setExitError(e.message);
+  } finally {
+    setExitLoading(false);
+  }
+};
   /* Fetch startup */
   useEffect(() => {
     if (!slug) return;
@@ -184,12 +223,35 @@ export default function StartupPage(): JSX.Element {
       const d = await res.json(); setInvestments(Array.isArray(d)?d:(d?.data??[]));
     } catch {}
   };
+  const acceptExit = async (id:string) => {
+  try {
+    const res = await fetch(`/api/exit-requests/${encodeURIComponent(id)}/accept`, {
+      method: 'PATCH',
+      headers: { 'Content-Type':'application/json', ...(token?{Authorization:`Bearer ${token}`}:{}) },
+    });
+    if(!res.ok) throw new Error(`Ошибка ${res.status}`);
+    await loadExitRequests();
+    await loadInvestments();
+  } catch(e:any) { alert('Не удалось принять: '+e.message); }
+};
 
-  useEffect(() => {
-    if(!startup) return;
-    loadOffers(); loadInvestments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startup]);
+const rejectExit = async (id:string) => {
+  try {
+    const res = await fetch(`/api/exit-requests/${encodeURIComponent(id)}/reject`, {
+      method: 'PATCH',
+      headers: { 'Content-Type':'application/json', ...(token?{Authorization:`Bearer ${token}`}:{}) },
+    });
+    if(!res.ok) throw new Error(`Ошибка ${res.status}`);
+    await loadExitRequests();
+  } catch(e:any) { alert('Не удалось отклонить: '+e.message); }
+};
+
+useEffect(() => {
+  if(!startup) return;
+  loadOffers();
+  loadInvestments();
+  loadExitRequests();
+}, [startup]);
 
   /* Derived */
   const lastMetric     = metrics&&metrics.length>0 ? metrics[metrics.length-1] : null;
@@ -202,7 +264,7 @@ export default function StartupPage(): JSX.Element {
   const usersSeries = metrics?.map(m=>m.activeUsers==null?null:Number(m.activeUsers))??[];
   const burnSeries  = metrics?.map(m=>m.burnRate==null?null:Number(m.burnRate))??[];
 
-  const isFounder  = user && startup && user.id === startup.founderId;
+  const isFounder = user?.id && startup?.founderId && user.id === startup.founderId;
   const isInvestor = user?.role === 'investor';
 
   const valuationMode = startup?.valuationMode ?? 'pre';
@@ -486,9 +548,38 @@ export default function StartupPage(): JSX.Element {
         </div>
 
       </div>{/* end bento */}
-
+{isFounder && (
+  <div className="sp-tile sp-col-12 sp-tile-pad">
+    <div className="sp-tile-label"><TrendingUp size={11}/> Запросы выхода инвесторов</div>
+    {exitLoading ? <p className="sp-empty">Загрузка…</p>
+    : exitError  ? <p className="sp-err">{exitError}</p>
+    : !exitRequests || exitRequests.length===0 ? <p className="sp-empty">Нет запросов на выход</p>
+    : (
+      <div className="sp-offers-list">
+        {exitRequests.map(r => (
+          <div key={r._id??r.id} className="sp-offer-item">
+            <div className="sp-offer-body">
+              <div className="sp-offer-main">
+                <div>ID инвестиции: {r.investmentId}</div>
+                <div>Сумма: {r.price?`$${r.price.toLocaleString()}`:'—'}</div>
+                <div>Статус: <span className={`sp-badge ${r.status?.toLowerCase()}`}>{r.status}</span></div>
+              </div>
+              {r.status==='PENDING' && (
+                <div className="sp-offer-actions">
+                  <button className="sp-btn sp-btn-accept" onClick={()=>acceptExit(String(r._id??r.id))}>Принять</button>
+                  <button className="sp-btn sp-btn-reject" onClick={()=>rejectExit(String(r._id??r.id))}>Отклонить</button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
       {/* ════ ACTION BAR ════ */}
-      <div className="sp-action-bar">
+      {isFounder && (
+  <div className="sp-action-bar">
         <div className="sp-action-left">
           {startup.website && (
             <a href={startup.website} target="_blank" rel="noreferrer" className="sp-btn sp-btn-primary">
@@ -503,7 +594,8 @@ export default function StartupPage(): JSX.Element {
         <button className="sp-btn sp-btn-danger" onClick={handleDelete} disabled={deleting}>
           <Trash2 size={14}/> {deleting?'Удаление…':'Удалить стартап'}
         </button>
-      </div>
+        </div>
+)}
 
     </div>
   );

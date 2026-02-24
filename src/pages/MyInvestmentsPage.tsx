@@ -7,6 +7,7 @@ import './MyInvestmentsPage.css';
 
 const API          = 'http://localhost:8080/api/investments';
 const STARTUPS_API = 'http://localhost:8080/api/startups';
+const EXIT_API = 'http://localhost:8080/api/exit-requests';
 
 type Investment = {
   id: string;
@@ -58,7 +59,31 @@ export default function MyInvestmentsPage() {
   const { user } = useAuth();
   const [investments, setInvestments] = useState<InvestmentWithStartup[]>([]);
   const [loading, setLoading]         = useState(true);
+  const [loadingExitId, setLoadingExitId] = useState<string | null>(null);
+  const handleExit = async (investmentId: string) => {
+  const price = prompt('Введите цену выхода (например 5000):');
+  if (!price) return;
 
+  try {
+    setLoadingExitId(investmentId);
+
+    await fetch(EXIT_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        investmentId,
+        price: Number(price),
+      }),
+    });
+
+    alert('Запрос на выход отправлен 🚀');
+  } catch (e) {
+    alert('Ошибка при создании запроса');
+  } finally {
+    setLoadingExitId(null);
+  }
+};
   useEffect(() => {
     if (!user?.id) { setLoading(false); return; }
 
@@ -242,6 +267,15 @@ export default function MyInvestmentsPage() {
                   {inv.status}
                 </span>
                 <div className="investment-id">ID: {invId.slice(0, 8)}…</div>
+                {inv.status === 'active' && (
+  <button
+    className="exit-button"
+    onClick={() => handleExit(invId)}
+    disabled={loadingExitId === invId}
+  >
+    {loadingExitId === invId ? '...' : 'Выйти'}
+  </button>
+)}
               </div>
 
             </div>
