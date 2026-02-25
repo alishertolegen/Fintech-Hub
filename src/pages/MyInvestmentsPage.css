@@ -1,22 +1,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
-
 :root {
-  --bg: #080c14;
-  --surface: rgba(255, 255, 255, 0.04);
-  --surface-hover: rgba(255, 255, 255, 0.07);
-  --border: rgba(255, 255, 255, 0.08);
-  --border-glow: rgba(99, 179, 255, 0.25);
-  --accent: #63b3ff;
-  --accent-2: #a78bfa;
-  --accent-3: #34d399;
-  --accent-warn: #fb923c;
+  --bg: #26282f; /* основной фон */
+  --surface: rgba(255, 245, 240, 0.07); /* фон карточек */
+  --surface-hover: rgba(255, 245, 240, 0.12);
+  --border: rgba(255, 235, 230, 0.12);
+  --border-glow: rgba(255, 170, 145, 0.3);
+
+  --accent: #ff927a;  /* основной акцент — коралловый */
+  --accent-2: #ffb390; /* вторичный акцент — мягкий персик */
+  --accent-3: #ffd3b0; /* третичный акцент — светлый персиковый */
+  --accent-warn: #fb923c; 
   --accent-red: #f87171;
-  --text-primary: #f0f4ff;
-  --text-secondary: rgba(240, 244, 255, 0.55);
-  --text-muted: rgba(240, 244, 255, 0.3);
+
+  --text-primary: #fff8f2; 
+  --text-secondary: rgba(255, 245, 240, 0.75);
+  --text-muted: rgba(255, 245, 240, 0.55);
+
   --font-display: 'Syne', sans-serif;
   --font-body: 'DM Sans', sans-serif;
   --font-mono: 'DM Mono', 'Fira Mono', monospace;
+
   --radius: 20px;
   --radius-sm: 12px;
   --radius-xs: 8px;
@@ -27,14 +30,19 @@
    ============================================ */
 .investments-page-container {
   min-height: 100vh;
-  background: var(--bg);
-  font-family: var(--font-body);
-  color: var(--text-primary);
   padding: 52px 24px 100px;
-  max-width: 1280px;
+  /* max-width: 1280px; */
   margin: 0 auto;
   position: relative;
   overflow-x: hidden;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+
+  /* новый фон с ambient градиентами */
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,146,122,0.05), transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(255,179,144,0.04), transparent 40%),
+    var(--bg);
 }
 
 .investments-page-container::before,
@@ -48,13 +56,13 @@
 }
 .investments-page-container::before {
   width: 700px; height: 700px;
-  background: radial-gradient(circle, rgba(167,139,250,0.07) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255,179,144,0.07) 0%, transparent 70%);
   top: -150px; right: -150px;
   animation: orb 14s ease-in-out infinite alternate;
 }
 .investments-page-container::after {
   width: 500px; height: 500px;
-  background: radial-gradient(circle, rgba(52,211,153,0.05) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255,211,176,0.05) 0%, transparent 70%);
   bottom: 100px; left: -100px;
   animation: orb 18s ease-in-out infinite alternate-reverse;
 }
@@ -142,7 +150,7 @@
 }
 
 .stat-card:hover {
-  border-color: rgba(167,139,250,0.2);
+  border-color: green;
   transform: translateY(-2px);
 }
 
@@ -192,7 +200,7 @@
   gap: 20px;
   padding: 24px 28px;
   border-radius: var(--radius);
-  background: rgba(12, 18, 32, 0.8);
+  background: rgba(255, 245, 240, 0.07);
   border: 1px solid var(--border);
   backdrop-filter: blur(16px);
   transition: border-color 0.22s, transform 0.22s, box-shadow 0.22s;
@@ -204,16 +212,16 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(167,139,250,0.04) 0%, transparent 50%);
+  background: linear-gradient(135deg, rgba(255,179,144,0.04) 0%, transparent 50%);
   opacity: 0;
   transition: opacity 0.22s;
   pointer-events: none;
 }
 
 .investment-card:hover {
-  border-color: rgba(167,139,250,0.2);
+  border-color: green;
+  box-shadow: 0 20px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,179,144,0.1);
   transform: translateY(-2px);
-  box-shadow: 0 20px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(167,139,250,0.1);
 }
 
 .investment-card:hover::before { opacity: 1; }
@@ -239,12 +247,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #2d1f6b 0%, #1e3a5f 100%);
-  border: 1px solid rgba(167,139,250,0.2);
+  background: linear-gradient(135deg, rgba(255,146,122,0.15), rgba(255,179,144,0.15));
+  border: 1px solid rgba(255,146,122,0.3);
+  color: var(--accent-2);
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1rem;
-  color: var(--accent-2);
   box-shadow: 0 0 0 3px rgba(167,139,250,0.08);
 }
 
@@ -298,8 +306,8 @@
   font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  background: rgba(167,139,250,0.12);
-  border: 1px solid rgba(167,139,250,0.25);
+  background: linear-gradient(135deg, rgba(255,146,122,0.12), rgba(255,179,144,0.12));
+  border: 1px solid rgba(255,146,122,0.25);
   color: var(--accent-2);
 }
 
@@ -400,13 +408,14 @@
 }
 
 .status-badge.active {
-  background: rgba(52,211,153,0.1);
-  border: 1px solid rgba(52,211,153,0.25);
+  background: rgba(255,211,176,0.1);
+  border: 1px solid rgba(255,211,176,0.25);
   color: var(--accent-3);
 }
+
 .status-badge.completed {
-  background: rgba(99,179,255,0.1);
-  border: 1px solid rgba(99,179,255,0.25);
+  background: rgba(255,146,122,0.1);
+  border: 1px solid rgba(255,146,122,0.25);
   color: var(--accent);
 }
 .status-badge.pending {
@@ -414,6 +423,7 @@
   border: 1px solid rgba(251,146,60,0.25);
   color: var(--accent-warn);
 }
+
 .status-badge.cancelled,
 .status-badge.canceled {
   background: rgba(248,113,113,0.08);
