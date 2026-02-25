@@ -138,8 +138,8 @@
   overflow: hidden;
   border: 1px solid rgba(99,179,255,0.15);
   box-shadow: 0 0 0 6px rgba(99,179,255,0.06), 0 24px 48px rgba(0,0,0,0.5);
-  background: linear-gradient(135deg, #ff927a, #ffb390);
-  color: var(--accent);
+  background: rgba(0, 0, 0, 0.28);
+  color: dodgerblue;
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-display); font-weight: 800; font-size: 2rem;
   flex-shrink: 0;

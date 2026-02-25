@@ -91,7 +91,7 @@ export default function StartupPage(): JSX.Element {
   const { slug }        = useParams<{slug:string}>();
   const navigate        = useNavigate();
   const { user, token } = useAuth();
-
+const [investors, setInvestors] = useState<Record<string, User>>({});
   const [startup,  setStartup]  = useState<Startup|null>(null);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string|null>(null);
@@ -119,7 +119,17 @@ export default function StartupPage(): JSX.Element {
   const [exitRequests, setExitRequests] = useState<ExitRequest[]|null>(null);
 const [exitLoading, setExitLoading] = useState(false);
 const [exitError, setExitError] = useState<string|null>(null);
-
+const loadInvestor = async (id: string) => {
+  if (investors[id]) return; // уже есть
+  try {
+    const res = await fetch(`${USERS_API}/${encodeURIComponent(id)}`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+    if (!res.ok) throw new Error(`Инвестор ${id} не найден`);
+    const data = await res.json();
+    setInvestors(prev => ({ ...prev, [id]: data }));
+  } catch(e:any) {
+    console.warn(e.message);
+  }
+};
 const loadExitRequests = async () => {
   if(!startup) return;
   const id = idForApi(); if(!id) return;
@@ -252,7 +262,12 @@ useEffect(() => {
   loadInvestments();
   loadExitRequests();
 }, [startup]);
-
+useEffect(() => {
+  if (!offers) return;
+  offers.forEach(o => {
+    if (o.investorId) loadInvestor(o.investorId);
+  });
+}, [offers]);
   /* Derived */
   const lastMetric     = metrics&&metrics.length>0 ? metrics[metrics.length-1] : null;
   const displayedMrr   = lastMetric?.mrr        ?? startup?.metricsSnapshot?.mrr   ?? 0;
@@ -356,13 +371,11 @@ useEffect(() => {
 
               {/* Founder chip */}
               {startup.founderId && !founderLoading && !founderError && founder && (
-                <button className="sp-founder-btn" onClick={()=>navigate(`/users/${encodeURIComponent(String(founder.id??founder._id??startup.founderId))}`)}>
-                  {founder.avatarUrl
-                    ? <img src={founder.avatarUrl} alt={founder.name} className="sp-founder-avatar" />
-                    : <div className="sp-founder-initials">{(founder.name||founder.username||'').split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase()||'U'}</div>
-                  }
-                  {founder.name??founder.username}
-                </button>
+// пример в Startup/StartupCard (у вас уже есть похожий код)
+<button className="sp-founder-btn" onClick={()=>navigate(`/users/${encodeURIComponent(String(founder.id ?? founder._id ?? startup.founderId))}`)}>
+  {founder.avatarUrl ? <img src={founder.avatarUrl} alt={founder.name} className="sp-founder-avatar" /> : <div className="sp-founder-initials">{(founder.name||founder.username||'').split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase()||'U'}</div>}
+  {founder.name ?? founder.username}
+</button>
               )}
             </div>
           </div>
@@ -525,30 +538,46 @@ useEffect(() => {
           : !offers || offers.length===0 ? <p className="sp-empty">Офферов пока нет</p>
           : (
             <div className="sp-offers-list">
-              {offers.map(o=>(
-                <div key={o._id??o.id} className="sp-offer-item">
-                  <div className="sp-offer-body">
-                    <div className="sp-offer-main">
-                      <div className="sp-offer-type">{o.type} · {o.visibility}</div>
-                      <div className="sp-offer-title">{o.title}</div>
-                      <div className="sp-offer-details">
-                        {o.amount?`$${o.amount.toLocaleString()}`:'—'} · {o.equityPercent??'—'}%
-                      </div>
-                      {o.note && <div className="sp-offer-note">{o.note}</div>}
-                    </div>
-                    <div className="sp-offer-meta">
-                      <div className="sp-offer-date">{fmtDateShort(o.createdAt)}</div>
-                      <span className={`sp-badge ${o.status??''}`}>{o.status}</span>
-                    </div>
-                  </div>
-                  {isFounder && o.status!=='accepted' && o.status!=='rejected' && (
-                    <div className="sp-offer-actions">
-                      <button className="sp-btn sp-btn-accept" onClick={()=>updateOfferStatus(String(o._id??o.id),'accepted')}>Принять</button>
-                      <button className="sp-btn sp-btn-reject" onClick={()=>updateOfferStatus(String(o._id??o.id),'rejected')}>Отклонить</button>
-                    </div>
-                  )}
-                </div>
-              ))}
+              {offers.map(o => {
+  const investor = o.investorId ? investors[o.investorId] : null;
+
+  return (
+    <div key={o._id ?? o.id} className="sp-offer-item">
+      <div className="sp-offer-body">
+        <div className="sp-offer-main">
+          <div className="sp-offer-type">{o.type} · {o.visibility}</div>
+          <div className="sp-offer-title">{o.title}</div>
+          <div className="sp-offer-details">
+            {o.amount ? `$${o.amount.toLocaleString()}` : '—'} · {o.equityPercent ?? '—'}%
+          </div>
+          {o.note && <div className="sp-offer-note">{o.note}</div>}
+
+          {/* Новый блок: инвестор */}
+          {investor && (
+            <button className="sp-founder-btn" onClick={() => navigate(`/users/${encodeURIComponent(String(investor.id ?? investor._id))}`)}>
+              {investor.avatarUrl
+                ? <img src={investor.avatarUrl} alt={investor.name} className="sp-founder-avatar" />
+                : <div className="sp-founder-initials">{(investor.name||investor.username||'').split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase()||'U'}</div>}
+              {investor.name ?? investor.username}
+            </button>
+          )}
+        </div>
+
+        <div className="sp-offer-meta">
+          <div className="sp-offer-date">{fmtDateShort(o.createdAt)}</div>
+          <span className={`sp-badge ${o.status ?? ''}`}>{o.status}</span>
+        </div>
+      </div>
+
+      {isFounder && o.status!=='accepted' && o.status!=='rejected' && (
+        <div className="sp-offer-actions">
+          <button className="sp-btn sp-btn-accept" onClick={()=>updateOfferStatus(String(o._id??o.id),'accepted')}>Принять</button>
+          <button className="sp-btn sp-btn-reject" onClick={()=>updateOfferStatus(String(o._id??o.id),'rejected')}>Отклонить</button>
+        </div>
+      )}
+    </div>
+  );
+})}
             </div>
           )}
         </div>

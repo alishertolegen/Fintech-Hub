@@ -15,7 +15,7 @@ import CreateStartup from './pages/CreateStartup';
 import MyInvestmentsPage from './pages/MyInvestmentsPage';
 import Footer from './components/Footer';
 import './App.css';
-
+import UserProfile from './components/UserProfile';
 function App() {
   const location = useLocation();
 
@@ -94,7 +94,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
+<Route path="/users/:id" element={<UserProfile/>} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

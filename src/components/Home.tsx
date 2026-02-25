@@ -90,7 +90,7 @@ const Home: React.FC = () => {
             <span className="masthead-logo-sub">Қазақстандағы №1 инвестиция платформасы</span>
           </div>
           <div className="masthead-edition">
-            Алматы&nbsp;·&nbsp;Басылым&nbsp;№ 001
+            Астана&nbsp;·&nbsp;Басылым&nbsp;№ 001
           </div>
         </div>
 
@@ -212,7 +212,7 @@ const Home: React.FC = () => {
       {/* ═══════════════════ DATA STRIP ═══════════════════ */}
       <div className="data-strip">
         {[
-          { num: '340', suffix: '+',   label: 'Тіркелген стартаптар', sub: 'Алматыдан 60% астам' },
+          { num: '340', suffix: '+',   label: 'Тіркелген стартаптар', sub: 'Астанадан 60% астам' },
           { num: '$4',  suffix: 'M+',  label: 'Жиналған инвестиция',  sub: '2026 жылдан бері' },
           { num: '120', suffix: '+',   label: 'Белсенді инвесторлар', sub: 'Angel & VC' },
           { num: '89',  suffix: '%',   label: 'Сәтті сәйкестендіру', sub: 'Startup ↔ Investor' },

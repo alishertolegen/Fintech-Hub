@@ -1,6 +1,6 @@
 // src/components/StartupsList.tsx
 import React, { useMemo, useState, useEffect, JSX } from 'react';
-import { Search, ExternalLink, BarChart2, Globe, FileText, TrendingUp, Users } from 'lucide-react';
+import { Search, ExternalLink, BarChart2, Globe, FileText, TrendingUp, Users, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import './StartupsList.css';
 
@@ -32,6 +32,14 @@ type Startup = {
   visibility?: string;
   valuationMode?: 'pre' | 'post' | null;
 };
+
+const STAGES = [
+  { value: 'all', label: 'Все стадии' },
+  { value: 'idea', label: 'Idea' },
+  { value: 'incubation', label: 'Incubation' },
+  { value: 'seed', label: 'Seed' },
+  { value: 'growth', label: 'Growth' },
+];
 
 function Logo({ name, url }: { name?: string; url?: string }) {
   if (url) return <img src={url} alt={name} className="logo-image" />;
@@ -85,7 +93,6 @@ export default function StartupsList(): JSX.Element {
         if (stageFilter !== 'all') params.set('stage', stageFilter);
         if (industryFilter !== 'all') params.set('industry', industryFilter);
         if (searchTerm.trim()) params.set('q', searchTerm.trim());
-
         const url = params.toString() ? `${API}?${params}` : API;
         const res = await fetch(url, { credentials: 'include' });
         if (!res.ok) {
@@ -129,145 +136,187 @@ export default function StartupsList(): JSX.Element {
 
   return (
     <div className="startups-container">
-      {/* ═══ HEADER ═══ */}
-      <header className="startups-header">
-        <div className="startups-title-section">
-          <h1>Стартаптар</h1>
-          <p className="startups-subtitle">Профили стартапов — основная коллекция</p>
-          <div className="startups-count">
-            Найдено: <strong>{filtered.length}</strong>
-          </div>
-        </div>
 
-        <div className="startups-filters">
-          <div className="search-wrapper">
-            <Search className="search-icon" size={18} />
-            <input
-              className="search-input"
-              placeholder="Поиск стартапа, pitch, отрасль..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+      {/* ═══ PAGE TITLE ═══ */}
+      <div className="startups-page-title">
+        <h1>Стартаптар</h1>
+        <p className="startups-subtitle">Профили стартапов — основная коллекция</p>
+      </div>
 
-          <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)} className="filter-select">
-            <option value="all">Все стадии</option>
-            <option value="idea">Idea</option>
-            <option value="incubation">Incubation</option>
-            <option value="seed">Seed</option>
-            <option value="growth">Growth</option>
-          </select>
+      {/* ═══ MAIN LAYOUT ═══ */}
+      <div className="startups-layout">
 
-          <select value={industryFilter} onChange={(e) => setIndustryFilter(e.target.value)} className="filter-select">
+        {/* ── SIDEBAR (filters) ── */}
+        <aside className="startups-sidebar">
+
+          <span className="sidebar-section-label">Стадия</span>
+          {STAGES.map(({ value, label }) => (
+            <button
+              key={value}
+              className={`sidebar-btn${stageFilter === value ? ' active' : ''}`}
+              onClick={() => setStageFilter(value)}
+            >
+              <span className="sidebar-btn-dot" />
+              {label}
+            </button>
+          ))}
+
+          <div className="sidebar-divider" />
+
+          <span className="sidebar-section-label">Отрасль</span>
+          <select
+            value={industryFilter}
+            onChange={(e) => setIndustryFilter(e.target.value)}
+            className={`sidebar-select${industryFilter !== 'all' ? ' active' : ''}`}
+          >
             <option value="all">Все отрасли</option>
             {industries.map((ind) => (
               <option key={ind} value={ind}>{ind}</option>
             ))}
           </select>
 
-          <label className="checkbox-label">
-            <input type="checkbox" checked={showPrivate} onChange={(e) => setShowPrivate(e.target.checked)} />
+          <div className="sidebar-divider" />
+
+          <label className="sidebar-checkbox-label">
+            <input
+              type="checkbox"
+              checked={showPrivate}
+              onChange={(e) => setShowPrivate(e.target.checked)}
+            />
             Показать private
           </label>
-        </div>
-      </header>
 
-      {/* ═══ STATES ═══ */}
-      {loading && <div className="loading-state">Загрузка стартапов…</div>}
-      {error && <div className="error-state">Ошибка: {error}</div>}
+        </aside>
 
-      {/* ═══ GRID ═══ */}
-      {!loading && !error && (
-        <div className="startups-grid">
-          {filtered.map((s) => {
-            const key = s.id ?? s._id ?? s.slug ?? Math.random().toString(36).slice(2, 9);
-            const valuationMode = s.valuationMode ?? 'pre';
-            const activeValuation =
-              valuationMode === 'pre'
-                ? s.metricsSnapshot?.valuationPreMoney
-                : s.metricsSnapshot?.valuationPostMoney;
+        {/* ── MAIN CONTENT ── */}
+        <div className="startups-main">
 
-            return (
-              <article key={key} className="startup-card">
-                {/* Logo */}
-                <div className="startup-logo">
-                  <Logo name={s.name} url={s.logoUrl} />
-                </div>
+          {/* Search + count row */}
+          <div className="startups-search-row">
+            <div className="search-wrapper">
+              <Search className="search-icon" size={18} />
+              <input
+                className="search-input"
+                placeholder="Поиск по названию, pitch, отрасли…"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button
+                  className="search-clear"
+                  onClick={() => setSearchTerm('')}
+                  aria-label="Очистить"
+                >
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+            <div className="startups-count">
+              <strong>{filtered.length}</strong>&nbsp;найдено
+            </div>
+          </div>
 
-                <div className="startup-content">
-                  {/* Header */}
-                  <div className="startup-header">
-                    <div className="startup-title-wrapper">
-                      <h2>
-                        {s.name}
-                        {s.stage && <span className="stage-badge">{s.stage}</span>}
-                        {s.industry && <span className="industry-text">{s.industry}</span>}
-                      </h2>
-                      {s.shortPitch && <p className="short-pitch">{s.shortPitch}</p>}
+          {/* States */}
+          {loading && <div className="loading-state">Загрузка стартапов…</div>}
+          {error && <div className="error-state">Ошибка: {error}</div>}
+
+          {/* Grid */}
+          {!loading && !error && (
+            <div className="startups-grid">
+              {filtered.map((s) => {
+                const key = s.id ?? s._id ?? s.slug ?? Math.random().toString(36).slice(2, 9);
+                const valuationMode = s.valuationMode ?? 'pre';
+                const activeValuation =
+                  valuationMode === 'pre'
+                    ? s.metricsSnapshot?.valuationPreMoney
+                    : s.metricsSnapshot?.valuationPostMoney;
+
+                return (
+                  <article key={key} className="startup-card">
+
+                    {/* Top: logo + name */}
+                    <div className="startup-card-top">
+                      <div className="startup-logo">
+                        <Logo name={s.name} url={s.logoUrl} />
+                      </div>
+                      <div className="startup-header">
+                        <div className="startup-name-row">
+                          <h2>{s.name}</h2>
+                          {s.stage && <span className="stage-badge">{s.stage}</span>}
+                          {s.industry && <span className="industry-text">{s.industry}</span>}
+                          {s.createdAt && (
+                            <span className="created-date">{formatDate(s.createdAt)}</span>
+                          )}
+                        </div>
+                        {s.shortPitch && <p className="short-pitch">{s.shortPitch}</p>}
+                      </div>
                     </div>
 
-                    <div className="startup-metrics">
-                      <div>
-                        <TrendingUp size={11} style={{ display: 'inline', marginRight: 3 }} />
-                        MRR <strong>{formatNumber(s.metricsSnapshot?.mrr)}</strong>
+                    {/* Body */}
+                    <div className="startup-content">
+                      {/* Metrics */}
+                      <div className="startup-metrics">
+                        <div className="metric-chip">
+                          <TrendingUp size={11} />
+                          MRR <strong>{formatNumber(s.metricsSnapshot?.mrr)}</strong>
+                        </div>
+                        <div className="metric-chip">
+                          <Users size={11} />
+                          <strong>{s.metricsSnapshot?.users?.toLocaleString() ?? '—'}</strong>
+                        </div>
+                        <div className="metric-chip">
+                          Val <strong>{formatNumber(activeValuation)}</strong>
+                        </div>
                       </div>
-                      <div>
-                        <Users size={11} style={{ display: 'inline', marginRight: 3 }} />
-                        <strong>{s.metricsSnapshot?.users?.toLocaleString() ?? '—'}</strong>
-                      </div>
-                      <div>Val <strong>{formatNumber(activeValuation)}</strong></div>
-                      {s.createdAt && (
-                        <div className="created-date">{formatDate(s.createdAt)}</div>
+
+                      {/* Description */}
+                      {s.description && (
+                        <p className="startup-description">{s.description}</p>
                       )}
-                    </div>
-                  </div>
 
-                  {/* Description */}
-                  {s.description && (
-                    <p className="startup-description">{s.description}</p>
-                  )}
-
-                  {/* Footer */}
-                  <div className="startup-footer">
-                    <div className="startup-meta">
-                      {s.website && (() => {
-                        try {
-                          return (
-                            <a href={s.website} target="_blank" rel="noreferrer" className="meta-link">
-                              <Globe size={13} />
-                              {new URL(s.website).hostname}
-                            </a>
-                          );
-                        } catch { return null; }
-                      })()}
-                      <div className="meta-info">
-                        <BarChart2 size={13} />
-                        {s.attachments?.length ?? 0} files
+                      {/* Footer */}
+                      <div className="startup-footer">
+                        <div className="startup-meta">
+                          {s.website && (() => {
+                            try {
+                              return (
+                                <a href={s.website} target="_blank" rel="noreferrer" className="meta-link">
+                                  <Globe size={13} />
+                                  {new URL(s.website).hostname}
+                                </a>
+                              );
+                            } catch { return null; }
+                          })()}
+                          <div className="meta-info">
+                            <BarChart2 size={13} />
+                            {s.attachments?.length ?? 0} files
+                          </div>
+                        </div>
+                        <div className="startup-actions">
+                          <Link to={`/startups/${s.id ?? s._id}`} className="btn-details">
+                            <FileText size={14} /> Подробнее
+                          </Link>
+                          <a href={s.website || '#'} target="_blank" rel="noreferrer" className="btn-website">
+                            <ExternalLink size={14} /> Сайт
+                          </a>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="startup-actions">
-                      <Link to={`/startups/${s.id ?? s._id}`} className="btn-details">
-                        <FileText size={14} /> Подробнее
-                      </Link>
-                      <a href={s.website || '#'} target="_blank" rel="noreferrer" className="btn-website">
-                        <ExternalLink size={14} /> Сайт
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+                  </article>
+                );
+              })}
 
-          {filtered.length === 0 && !loading && (
-            <div className="empty-state">
-              <h3>Стартаптар табылмады</h3>
-              <p>Попробуйте изменить поисковый запрос или фильтры.</p>
+              {filtered.length === 0 && (
+                <div className="empty-state">
+                  <h3>Стартаптар табылмады</h3>
+                  <p>Попробуйте изменить поисковый запрос или фильтры.</p>
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
