@@ -95,7 +95,7 @@ useEffect(() => {
             )}
             <NavLink to="/startups" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} onClick={closeMenu}>
               <span className="nav-link-icon">◈</span>
-              Стартаптар
+              Стартапы
             </NavLink>
 
             {user?.role === 'founder' && (
