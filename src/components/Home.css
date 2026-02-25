@@ -14,7 +14,7 @@
   --text-mid:    #c8c3d4;
   --text-muted:  #8a8598;
   --text-faint:  #4a4758;
-  --gold:        #e2bc7a;
+  --gold:        #ff927a;
   --gold-dim:    rgba(226,188,122,0.12);
   --gold-glow:   rgba(226,188,122,0.05);
   --red:         #e05a5a;
@@ -185,7 +185,7 @@ body::after {
 }
 
 .masthead-logo-text em {
-  color: var(--gold);
+  color: #ff927a;
   font-style: italic;
   font-weight: 400;
 }

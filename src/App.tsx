@@ -22,10 +22,6 @@ function App() {
   const isAuthPage =
     location.pathname === '/login' || location.pathname === '/register';
 
-    const hideFooter =
-  location.pathname === '/login' ||
-  location.pathname === '/register' ||
-  location.pathname === '/profile';
   return (
     <div className="app-container">
       {!isAuthPage && <Navbar />}
@@ -105,7 +101,7 @@ function App() {
       )}
 
       {/* footer показываем только на не-auth страницах */}
-      {!hideFooter && <Footer />}
+      {!isAuthPage && <Footer />}
     </div>
   );
 }

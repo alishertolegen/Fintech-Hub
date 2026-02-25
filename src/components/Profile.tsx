@@ -5,7 +5,7 @@ import {
   Globe, TrendingUp, Layers, Shield, DollarSign,
   Activity, PieChart, ArrowUpRight, Clock, Zap, Target, BarChart2,
   Rocket, FileText, Users, ChevronDown, ChevronUp, ExternalLink,
-  Flame, Eye, Tag
+  Flame, Eye, Tag, User
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import './Profile.css';
@@ -42,6 +42,16 @@ type Offer = {
   id?: string; title?: string; startupId?: string; investorId?: string;
   amount?: number; equityPercent?: number; type?: string; visibility?: string;
   status?: string; note?: string; createdAt?: string;
+};
+
+// Form state for editing user profile
+type UserEditForm = {
+  name: string;
+  company: string;
+  bio: string;
+  avatarUrl: string;
+  phone: string;
+  location: string;
 };
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
@@ -210,8 +220,17 @@ export default function Profile() {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
   const [investor, setInvestor] = useState<InvestorApi | null>(null);
+
+  // User profile editing state
+  const [editingUser, setEditingUser]   = useState(false);
+  const [userForm, setUserForm]         = useState<UserEditForm>({ name: '', company: '', bio: '', avatarUrl: '', phone: '', location: '' });
+  const [userSaving, setUserSaving]     = useState(false);
+  const [userSaveError, setUserSaveError] = useState<string | null>(null);
+
+  // Investor profile editing state
   const [editingInvestor, setEditingInvestor] = useState(false);
   const [investorSaving, setInvestorSaving]   = useState(false);
+
   const [investments, setInvestments]         = useState<Investment[]>([]);
   const [loadingInv, setLoadingInv]           = useState(false);
   const [startups, setStartups]               = useState<Startup[]>([]);
@@ -222,7 +241,18 @@ export default function Profile() {
   /* fetch user */
   useEffect(() => {
     if (authUser) {
-      setUser({ id: authUser.id, email: authUser.email, name: authUser.fullName ?? authUser.email, company: authUser.company, bio: authUser.bio, avatarUrl: authUser.avatarUrl, phone: authUser.phone, location: authUser.location, role: authUser.role });
+      const u: ApiUser = {
+        id: authUser.id,
+        email: authUser.email,
+        name: authUser.fullName ?? authUser.email,
+        company: authUser.company,
+        bio: authUser.bio,
+        avatarUrl: authUser.avatarUrl,
+        phone: authUser.phone,
+        location: authUser.location,
+        role: authUser.role,
+      };
+      setUser(u);
       return;
     }
     if (!authLoading && token) {
@@ -230,16 +260,46 @@ export default function Profile() {
       (async () => {
         setLoading(true); setError(null);
         try {
-          const res = await fetch('http://localhost:8080/api/users/me', { headers: { Authorization: `Bearer ${token}` }, signal: abort.signal });
+          const res = await fetch('http://localhost:8080/api/users/me', {
+            headers: { Authorization: `Bearer ${token}` },
+            signal: abort.signal,
+          });
           if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error ?? j.message ?? `Ошибка ${res.status}`); }
           const data: ApiUser = await res.json();
-          setUser({ id: data.id, email: data.email, name: data.name ?? data.fullName ?? data.email, company: data.company, bio: data.bio, avatarUrl: data.avatarUrl, phone: data.meta?.phone ?? data.phone, location: data.meta?.location ?? data.location, role: data.role });
-        } catch(e:any) { if (e.name !== 'AbortError') setError(e.message ?? 'Не удалось загрузить профиль'); }
-        finally { setLoading(false); }
+          setUser({
+            id: data.id,
+            email: data.email,
+            name: data.name ?? data.fullName ?? data.email,
+            company: data.company,
+            bio: data.bio,
+            avatarUrl: data.avatarUrl,
+            phone: data.meta?.phone ?? data.phone,
+            location: data.meta?.location ?? data.location,
+            role: data.role,
+          });
+        } catch (e: any) {
+          if (e.name !== 'AbortError') setError(e.message ?? 'Не удалось загрузить профиль');
+        } finally {
+          setLoading(false);
+        }
       })();
       return () => abort.abort();
     }
   }, [authUser, token, authLoading]);
+
+  /* sync userForm when user loads */
+  useEffect(() => {
+    if (user) {
+      setUserForm({
+        name: user.name ?? '',
+        company: user.company ?? '',
+        bio: user.bio ?? '',
+        avatarUrl: user.avatarUrl ?? '',
+        phone: user.phone ?? user.meta?.phone ?? '',
+        location: user.location ?? user.meta?.location ?? '',
+      });
+    }
+  }, [user]);
 
   /* fetch investor profile */
   useEffect(() => {
@@ -247,9 +307,12 @@ export default function Profile() {
     const abort = new AbortController();
     (async () => {
       try {
-        const res = await fetch(`http://localhost:8080/api/investors/user/${user.id}`, { headers: { Authorization: `Bearer ${token}` }, signal: abort.signal });
+        const res = await fetch(`http://localhost:8080/api/investors/user/${user.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: abort.signal,
+        });
         if (res.ok) setInvestor(await res.json());
-      } catch(e:any) { if (e.name !== 'AbortError') console.error(e); }
+      } catch (e: any) { if (e.name !== 'AbortError') console.error(e); }
     })();
     return () => abort.abort();
   }, [user, token]);
@@ -261,9 +324,12 @@ export default function Profile() {
     setLoadingInv(true);
     (async () => {
       try {
-        const res = await fetch(`http://localhost:8080/api/investments/investor/${user.id}`, { headers: { Authorization: `Bearer ${token}` }, signal: abort.signal });
+        const res = await fetch(`http://localhost:8080/api/investments/investor/${user.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: abort.signal,
+        });
         if (res.ok) setInvestments(await res.json());
-      } catch(e:any) { if (e.name !== 'AbortError') console.error(e); }
+      } catch (e: any) { if (e.name !== 'AbortError') console.error(e); }
       finally { setLoadingInv(false); }
     })();
     return () => abort.abort();
@@ -276,7 +342,10 @@ export default function Profile() {
     setLoadingStartups(true);
     (async () => {
       try {
-        const res = await fetch('http://localhost:8080/api/startups', { headers: { Authorization: `Bearer ${token}` }, signal: abort.signal });
+        const res = await fetch('http://localhost:8080/api/startups', {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: abort.signal,
+        });
         if (res.ok) {
           const all: Startup[] = await res.json();
           const mine = all.filter(s => s.founderId === user.id);
@@ -295,12 +364,71 @@ export default function Profile() {
           setFounderOffers(offersAll);
           setFounderInvestments(invAll);
         }
-      } catch(e:any) { if (e.name !== 'AbortError') console.error(e); }
+      } catch (e: any) { if (e.name !== 'AbortError') console.error(e); }
       finally { setLoadingStartups(false); }
     })();
     return () => abort.abort();
   }, [user, token]);
 
+  /* ── Save user profile via PUT /api/users/me ── */
+  async function saveUser() {
+    if (!token) return;
+    setUserSaving(true);
+    setUserSaveError(null);
+    try {
+      const body = {
+        name: userForm.name || undefined,
+        company: userForm.company || undefined,
+        bio: userForm.bio || undefined,
+        avatarUrl: userForm.avatarUrl || undefined,
+        phone: userForm.phone || undefined,
+        location: userForm.location || undefined,
+      };
+      const res = await fetch('http://localhost:8080/api/users/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.message ?? `Ошибка ${res.status}`);
+      }
+      const updated: ApiUser = await res.json();
+      // Update local user state with fresh data from server
+      setUser({
+        ...user,
+        name: updated.name ?? updated.fullName,
+        company: updated.company,
+        bio: updated.bio,
+        avatarUrl: updated.avatarUrl,
+        phone: updated.meta?.phone ?? updated.phone,
+        location: updated.meta?.location ?? updated.location,
+      });
+      setEditingUser(false);
+    } catch (e: any) {
+      setUserSaveError(e.message ?? 'Не удалось сохранить профиль');
+    } finally {
+      setUserSaving(false);
+    }
+  }
+
+  function cancelEditUser() {
+    // Reset form to current user data
+    if (user) {
+      setUserForm({
+        name: user.name ?? '',
+        company: user.company ?? '',
+        bio: user.bio ?? '',
+        avatarUrl: user.avatarUrl ?? '',
+        phone: user.phone ?? user.meta?.phone ?? '',
+        location: user.location ?? user.meta?.location ?? '',
+      });
+    }
+    setUserSaveError(null);
+    setEditingUser(false);
+  }
+
+  /* ── Save investor profile ── */
   async function saveInvestor(updated: InvestorApi) {
     if (!user) return;
     setInvestorSaving(true);
@@ -308,11 +436,19 @@ export default function Profile() {
       const url = updated.id
         ? `http://localhost:8080/api/investors/${updated.id}`
         : `http://localhost:8080/api/investors/user/${user.id}`;
-      const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(updated) });
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(updated),
+      });
       if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.message ?? `Ошибка ${res.status}`); }
-      setInvestor(await res.json()); setEditingInvestor(false);
-    } catch(e:any) { alert('Ошибка: ' + e.message); }
-    finally { setInvestorSaving(false); }
+      setInvestor(await res.json());
+      setEditingInvestor(false);
+    } catch (e: any) {
+      alert('Ошибка: ' + e.message);
+    } finally {
+      setInvestorSaving(false);
+    }
   }
 
   /* Derived */
@@ -324,8 +460,8 @@ export default function Profile() {
   const avgEquity     = investments.length ? investments.reduce((s, i) => s + (i.equityPercent ?? 0), 0) / investments.length : null;
   const totalPortVal  = investments.reduce((s, i) => s + (i.valuationPostMoney ?? 0), 0);
 
-  const founderTotalRaised   = founderInvestments.reduce((s, i) => s + (i.amount ?? 0), 0);
-  const founderPendingOffers = founderOffers.filter(o => o.status === 'sent' || o.status === 'pending').length;
+  const founderTotalRaised    = founderInvestments.reduce((s, i) => s + (i.amount ?? 0), 0);
+  const founderPendingOffers  = founderOffers.filter(o => o.status === 'sent' || o.status === 'pending').length;
   const founderAcceptedOffers = founderOffers.filter(o => o.status === 'accepted').length;
 
   /* Portfolio bar */
@@ -345,6 +481,14 @@ export default function Profile() {
     <div className="pf-page"><div className="pf-state">Профиль недоступен — пожалуйста, войдите.</div></div>
   );
 
+  // Derive displayed values: if editing, show form values; otherwise show saved user values
+  const displayName     = editingUser ? userForm.name     : (user.name ?? '—');
+  const displayCompany  = editingUser ? userForm.company  : (user.company ?? '');
+  const displayBio      = editingUser ? userForm.bio      : (user.bio ?? '');
+  const displayPhone    = editingUser ? userForm.phone    : (user.phone ?? user.meta?.phone ?? '—');
+  const displayLocation = editingUser ? userForm.location : (user.location ?? user.meta?.location ?? '—');
+  const displayAvatar   = editingUser ? userForm.avatarUrl : (user.avatarUrl ?? '');
+
   return (
     <div className="pf-page">
       <div className="pf-wrap">
@@ -358,13 +502,16 @@ export default function Profile() {
               {/* Avatar + name block */}
               <div className="pf-hero-avatar-block">
                 <div className="pf-avatar-ring">
-                  {user.avatarUrl ? <img src={user.avatarUrl} alt={user.name} /> : <InitialsAvatar name={user.name} />}
+                  {displayAvatar
+                    ? <img src={displayAvatar} alt={displayName} />
+                    : <InitialsAvatar name={displayName} />
+                  }
                   {investor?.isVerified && (
                     <div className="pf-verified" title="Верифицирован"><Shield size={11} color="#051a0a" /></div>
                   )}
                 </div>
                 <div className="pf-hero-name-block">
-                  <h1 className="pf-name">{user.name}</h1>
+                  <h1 className="pf-name">{displayName}</h1>
                   {user.role && (
                     <span className="pf-role-badge">
                       {user.role === 'investor' && <TrendingUp size={9} />}
@@ -372,8 +519,8 @@ export default function Profile() {
                       {user.role}
                     </span>
                   )}
-                  {user.company && <p className="pf-company"><Briefcase size={11} />{user.company}</p>}
-                  {user.bio && <p className="pf-bio">"{user.bio}"</p>}
+                  {displayCompany && <p className="pf-company"><Briefcase size={11} />{displayCompany}</p>}
+                  {displayBio && <p className="pf-bio">"{displayBio}"</p>}
                 </div>
               </div>
 
@@ -441,8 +588,8 @@ export default function Profile() {
               <div className="pf-hero-contacts">
                 {[
                   { icon: <Mail size={13} />, label: 'Email', value: user.email ?? '—' },
-                  { icon: <Phone size={13} />, label: 'Телефон', value: user.phone ?? '—' },
-                  { icon: <MapPin size={13} />, label: 'Местоположение', value: user.location ?? '—' },
+                  { icon: <Phone size={13} />, label: 'Телефон', value: displayPhone },
+                  { icon: <MapPin size={13} />, label: 'Местоположение', value: displayLocation },
                 ].map(({ icon, label, value }) => (
                   <div className="pf-contact-row" key={label}>
                     <div className="pf-contact-icon">{icon}</div>
@@ -455,7 +602,7 @@ export default function Profile() {
               </div>
 
               {/* Investor: check range */}
-              {isInvestor && (investor?.minCheck != null || investor?.maxCheck != null) && (
+              {isInvestor && (investor?.minCheck != null || investor?.maxCheck != null) && !editingInvestor && (
                 <div className="pf-hero-check">
                   <div className="pf-check-label">Диапазон чека</div>
                   <div className="pf-check-range">
@@ -467,7 +614,7 @@ export default function Profile() {
               )}
 
               {/* Investor: preferred stages + industries */}
-              {isInvestor && ((investor?.preferredStages?.length ?? 0) > 0 || (investor?.preferredIndustries?.length ?? 0) > 0) && (
+              {isInvestor && !editingInvestor && ((investor?.preferredStages?.length ?? 0) > 0 || (investor?.preferredIndustries?.length ?? 0) > 0) && (
                 <div className="pf-hero-tags">
                   {(investor?.preferredStages?.length ?? 0) > 0 && (
                     <>
@@ -497,7 +644,7 @@ export default function Profile() {
               )}
 
               {/* Website */}
-              {investor?.website && (
+              {investor?.website && !editingInvestor && (
                 <div className="pf-hero-website">
                   <a href={investor.website} target="_blank" rel="noreferrer" className="pf-website-link">
                     <Globe size={12} /> {investor.website} <ExternalLink size={10} />
@@ -505,12 +652,17 @@ export default function Profile() {
                 </div>
               )}
 
-              {/* Edit investor profile button */}
-              {isInvestor && !editingInvestor && (
+              {/* Actions: Edit user profile button (shown when not editing anything) */}
+              {!editingUser && !editingInvestor && (
                 <div className="pf-hero-actions">
-                  <button className="pf-btn pf-btn-primary pf-btn-full" onClick={() => setEditingInvestor(true)}>
-                    <Pencil size={12} /> Редактировать профиль
+                  <button className="pf-btn pf-btn-primary pf-btn-full" onClick={() => setEditingUser(true)}>
+                    <User size={12} /> Редактировать профиль
                   </button>
+                  {isInvestor && (
+                    <button className="pf-btn pf-btn-secondary pf-btn-full" onClick={() => setEditingInvestor(true)} style={{ marginTop: 8 }}>
+                      <Pencil size={12} /> Профиль инвестора
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -519,6 +671,93 @@ export default function Profile() {
 
           {/* ════ RIGHT PANEL ════ */}
           <div className="pf-panel">
+
+            {/* ── USER PROFILE EDIT SECTION (all roles) ── */}
+            {editingUser && (
+              <div className="pf-section">
+                <div className="pf-section-head">
+                  <div className="pf-section-label">
+                    <User size={10} className="icon-orange" />
+                    Редактирование профиля
+                  </div>
+                  <div style={{ display: 'flex', gap: 7 }}>
+                    <button className="pf-btn pf-btn-secondary" onClick={cancelEditUser} disabled={userSaving}>
+                      <X size={11} /> Отмена
+                    </button>
+                    <button className="pf-btn pf-btn-success" onClick={saveUser} disabled={userSaving}>
+                      <Check size={11} /> {userSaving ? 'Сохранение…' : 'Сохранить'}
+                    </button>
+                  </div>
+                </div>
+
+                {userSaveError && (
+                  <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: 'rgba(255, 80, 80, 0.1)', border: '1px solid rgba(255, 80, 80, 0.25)', color: '#ff6b6b', fontSize: 13 }}>
+                    ⚠ {userSaveError}
+                  </div>
+                )}
+
+                <div className="pf-form">
+                  <div className="pf-form-row">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                      <label className="pf-input-label">Имя</label>
+                      <input
+                        className="pf-input"
+                        placeholder="Ваше имя"
+                        value={userForm.name}
+                        onChange={e => setUserForm(f => ({ ...f, name: e.target.value }))}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                      <label className="pf-input-label">Компания</label>
+                      <input
+                        className="pf-input"
+                        placeholder="Название компании"
+                        value={userForm.company}
+                        onChange={e => setUserForm(f => ({ ...f, company: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label className="pf-input-label">Био</label>
+                    <textarea
+                      className="pf-textarea"
+                      placeholder="Расскажите о себе…"
+                      value={userForm.bio}
+                      onChange={e => setUserForm(f => ({ ...f, bio: e.target.value }))}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label className="pf-input-label">URL аватара</label>
+                    <input
+                      className="pf-input"
+                      placeholder="https://example.com/avatar.jpg"
+                      value={userForm.avatarUrl}
+                      onChange={e => setUserForm(f => ({ ...f, avatarUrl: e.target.value }))}
+                    />
+                  </div>
+                  <div className="pf-form-row">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                      <label className="pf-input-label">Телефон</label>
+                      <input
+                        className="pf-input"
+                        placeholder="+7 777 000 00 00"
+                        value={userForm.phone}
+                        onChange={e => setUserForm(f => ({ ...f, phone: e.target.value }))}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                      <label className="pf-input-label">Местоположение</label>
+                      <input
+                        className="pf-input"
+                        placeholder="Алматы, Казахстан"
+                        value={userForm.location}
+                        onChange={e => setUserForm(f => ({ ...f, location: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ── INVESTOR SECTIONS ── */}
             {isInvestor && (
@@ -530,7 +769,7 @@ export default function Profile() {
                       <Target size={10} className="icon-orange" />
                       Профиль инвестора
                     </div>
-                    {editingInvestor && (
+                    {editingInvestor ? (
                       <div style={{ display: 'flex', gap: 7 }}>
                         <button className="pf-btn pf-btn-secondary" onClick={() => setEditingInvestor(false)} disabled={investorSaving}>
                           <X size={11} /> Отмена
@@ -539,6 +778,12 @@ export default function Profile() {
                           <Check size={11} /> {investorSaving ? 'Сохранение…' : 'Сохранить'}
                         </button>
                       </div>
+                    ) : (
+                      !editingUser && (
+                        <button className="pf-btn pf-btn-ghost" onClick={() => setEditingInvestor(true)}>
+                          <Pencil size={10} /> Изменить
+                        </button>
+                      )
                     )}
                   </div>
 
