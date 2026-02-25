@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg: #26282f;
+  --bg: transparent;
   --surface: rgba(255, 245, 240, 0.07);
   --surface-2: rgba(255, 245, 240, 0.12);
   --surface-3: rgba(255, 245, 240, 0.04);
@@ -35,7 +35,7 @@
    ============================================================ */
 .sp-root {
   min-height: 100vh;
-  background: var(--bg);
+  background: transparent;
   font-family: var(--font-body);
   color: var(--text-primary);
   padding: 28px 28px 56px;

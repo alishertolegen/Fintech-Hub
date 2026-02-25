@@ -27,7 +27,7 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: 360px 1fr;
-  background: var(--bg);
+  background: transparent;
   font-family: var(--font-body);
   color: var(--text-primary);
   overflow: hidden;
@@ -39,7 +39,7 @@
 .cs-left {
   position: sticky;
   top: 0;
-  height: 100vh;
+  min-height: 100vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;

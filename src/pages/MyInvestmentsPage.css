@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
 :root {
-  --bg: #26282f; /* основной фон */
+  --bg: transparent;; /* основной фон */
   --surface: rgba(255, 245, 240, 0.07); /* фон карточек */
   --surface-hover: rgba(255, 245, 240, 0.12);
   --border: rgba(255, 235, 230, 0.12);
@@ -39,10 +39,7 @@
   color: var(--text-primary);
 
   /* новый фон с ambient градиентами */
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255,146,122,0.05), transparent 40%),
-    radial-gradient(circle at 80% 70%, rgba(255,179,144,0.04), transparent 40%),
-    var(--bg);
+  background: transparent;
 }
 
 .investments-page-container::before,

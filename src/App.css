@@ -1,16 +1,15 @@
-
 :root {
-  --bg: #26282f; /* основной фон */
-  --surface: rgba(255, 245, 240, 0.07); /* фон карточек */
+  --bg: #26282f;
+  --surface: rgba(255, 245, 240, 0.07);
   --surface-hover: rgba(255, 245, 240, 0.12);
   --border: rgba(255, 235, 230, 0.12);
   --border-glow: rgba(255, 170, 145, 0.3);
 
-  --accent: #ff927a;  /* основной акцент — коралловый */
-  --accent-2: #ffb390; /* вторичный акцент — мягкий персик */
-  --accent-3: #ffd3b0; /* третичный акцент — светлый персиковый */
+  --accent: #ff927a;
+  --accent-2: #ffb390;
+  --accent-3: #ffd3b0;
 
-  --text-primary: #fff8f2; 
+  --text-primary: #fff8f2;
   --text-secondary: rgba(255, 245, 240, 0.75);
   --text-muted: rgba(255, 245, 240, 0.55);
 
@@ -20,31 +19,152 @@
   --radius-sm: 12px;
 }
 
-body {
-  padding-top: 72px; /* высота навбара */
-}
-body {
-  margin: 0;
-  background: #080c14;
-}
-body {
-  margin: 0;
-  background: var(--bg);
+/* ── Keyframes ── */
+@keyframes orb-1 {
+  0%   { transform: translate(0px, 0px)      scale(1);    }
+  15%  { transform: translate(80px, -60px)   scale(1.12); }
+  30%  { transform: translate(140px, 20px)   scale(0.9);  }
+  45%  { transform: translate(60px, 100px)   scale(1.08); }
+  60%  { transform: translate(-60px, 80px)   scale(1.15); }
+  75%  { transform: translate(-120px, -20px) scale(0.95); }
+  90%  { transform: translate(-40px, -90px)  scale(1.05); }
+  100% { transform: translate(0px, 0px)      scale(1);    }
 }
 
+@keyframes orb-2 {
+  0%   { transform: translate(0px, 0px)      scale(1);    }
+  20%  { transform: translate(-100px, -80px) scale(1.1);  }
+  40%  { transform: translate(-160px, 40px)  scale(0.88); }
+  55%  { transform: translate(-60px, 130px)  scale(1.14); }
+  70%  { transform: translate(80px, 100px)   scale(0.93); }
+  85%  { transform: translate(120px, -30px)  scale(1.07); }
+  100% { transform: translate(0px, 0px)      scale(1);    }
+}
+
+@keyframes orb-3 {
+  0%   { transform: translate(-50%, -50%) scale(1);    }
+  20%  { transform: translate(calc(-50% + 120px), calc(-50% - 80px))  scale(1.1);  }
+  40%  { transform: translate(calc(-50% + 50px),  calc(-50% + 120px)) scale(0.9);  }
+  60%  { transform: translate(calc(-50% - 100px), calc(-50% + 60px))  scale(1.12); }
+  80%  { transform: translate(calc(-50% - 80px),  calc(-50% - 100px)) scale(0.95); }
+  100% { transform: translate(-50%, -50%) scale(1);    }
+}
+
+@keyframes orb-4 {
+  0%   { transform: translate(0px, 0px)     scale(1);    }
+  25%  { transform: translate(-90px, 70px)  scale(1.13); }
+  50%  { transform: translate(60px, 140px)  scale(0.87); }
+  75%  { transform: translate(110px, -50px) scale(1.09); }
+  100% { transform: translate(0px, 0px)     scale(1);    }
+}
+
+/* ── Body ── */
+body {
+  margin: 0;
+  padding-top: 72px;
+  background: var(--bg);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Орб 1 — КРАСНЫЙ, левый верх */
+body::before {
+  content: '';
+  position: fixed;
+  top: -80px;
+  left: -80px;
+  width: 650px;
+  height: 650px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%,
+    rgba(255, 80, 80, 0.60)  0%,
+    rgba(200, 30, 30, 0.28)  45%,
+    transparent 72%
+  );
+  filter: blur(65px);
+  pointer-events: none;
+  z-index: 0;
+  animation: orb-1 20s ease-in-out infinite;
+}
+
+/* Орб 2 — СИНИЙ, правый низ */
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -60px;
+  right: -60px;
+  width: 720px;
+  height: 720px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 60% 60%,
+    rgba(60, 120, 255, 0.55)  0%,
+    rgba(30, 80, 220, 0.24)   45%,
+    transparent 72%
+  );
+  filter: blur(75px);
+  pointer-events: none;
+  z-index: 0;
+  animation: orb-2 24s ease-in-out infinite;
+}
+
+/* Орб 3 — КРАСНЫЙ (центр)
+   Добавь <div class="orb-mid"></div> сразу после открывающего тега <body> */
+.orb-mid {
+  position: fixed;
+  top: 45%;
+  left: 50%;
+  width: 560px;
+  height: 560px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 50% 50%,
+    rgba(255, 120, 120, 0.45) 0%,
+    rgba(200, 40, 40,  0.18) 45%,
+    transparent 72%
+  );
+  filter: blur(85px);
+  pointer-events: none;
+  z-index: 0;
+  animation: orb-3 28s ease-in-out infinite;
+}
+
+/* Орб 4 — СИНИЙ, правый верх
+   Добавь <div class="orb-top"></div> сразу после открывающего тега <body> */
+.orb-top {
+  position: fixed;
+  top: -60px;
+  right: -60px;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(80, 160, 255, 0.52)  0%,
+    rgba(40, 110, 255, 0.22)  45%,
+    transparent 72%
+  );
+  filter: blur(72px);
+  pointer-events: none;
+  z-index: 0;
+  animation: orb-4 16s ease-in-out infinite;
+}
+
+/* ── Контейнер ── */
 .startups-container {
   width: 100%;
   min-height: 100vh;
   padding: 52px 24px 80px;
   margin: 0;
-  background: var(--bg);
-  max-width: none; /* убираем ограничение */
+  max-width: none;
+  position: relative;
+  background: transparent;
 }
 
 /* ── Карточки ── */
 .startup-card {
-  background: rgba(255, 245, 240, 0.06); 
+  background: rgba(255, 245, 240, 0.06);
   border: 1px solid var(--border);
+  position: relative;
+  z-index: 1;
 }
 
 .startup-card:hover {
@@ -55,21 +175,18 @@ body {
     0 0 30px rgba(255,146,122,0.18);
 }
 
-/* Лого */
 .logo-initials {
   background: linear-gradient(135deg, rgba(255,146,122,0.15), rgba(255,179,144,0.15));
   border: 1px solid rgba(255,146,122,0.3);
   color: var(--accent);
 }
 
-/* Stage badge */
 .stage-badge {
   background: linear-gradient(135deg, rgba(255,146,122,0.18), rgba(255,179,144,0.18));
   border: 1px solid rgba(255,146,122,0.35);
   color: var(--accent);
 }
 
-/* Кнопки */
 .btn-details {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: #fff;
@@ -81,33 +198,28 @@ body {
     inset 0 0 14px rgba(255,255,255,0.1);
 }
 
-/* Ссылки */
 .meta-link {
   color: var(--accent);
   text-shadow: 0 0 6px rgba(255,146,122,0.2);
 }
 
-/* Ambient фон контейнера */
-.startups-container {
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255,146,122,0.05), transparent 40%),
-    radial-gradient(circle at 80% 70%, rgba(255,179,144,0.04), transparent 40%),
-    var(--bg);
-}
-/* App.css */
+/* ── App layout ── */
 .app-container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  position: relative;
+  z-index: 1;
 }
 
 .main-content {
   flex: 1;
 }
 
-/* базовые стили футера (можешь заменить на свои) */
 .footer {
   padding: 28px 20px;
   background: #0b0b0b;
   color: #fff;
+  position: relative;
+  z-index: 1;
 }
