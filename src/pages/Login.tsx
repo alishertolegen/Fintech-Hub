@@ -85,13 +85,14 @@ export default function LoginPage() {
       <div className="login-dot" aria-hidden="true" />
       <div className="login-dot" aria-hidden="true" />
       <div className="login-dot" aria-hidden="true" />
-
+<div className="login-wrapper">
       {/* === Logo top-center === */}
-      <div className="login-logo">
-        <div className="login-logo-mark" />
-        <span className="login-logo-text">FINTECH HUB</span>
-      </div>
-
+<div className="login-logo navbar-logo">
+  <div className="logo-mark login-logo-mark">
+    <img src="/logo_fintech_transparent.png" alt="logo" />
+  </div>
+  <span className="logo-text login-logo-text">FINTECH<em>HUB</em></span>
+</div>
       {/* === Issue number — editorial detail === */}
       <div className="login-issue" aria-hidden="true">№ 001 — Auth</div>
 
@@ -158,6 +159,7 @@ export default function LoginPage() {
           </div>
 
         </form>
+      </div>
       </div>
     </div>
   );

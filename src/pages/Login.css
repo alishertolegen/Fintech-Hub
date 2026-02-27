@@ -26,7 +26,7 @@ body {
   font-family: 'Space Mono', monospace;
   min-height: 100vh;
   overflow-x: hidden;
-overflow-y: auto;
+
 }
 
 /* ============================================================
@@ -38,7 +38,7 @@ overflow-y: auto;
   align-items: center;
   justify-content: center;
   position: relative;
-  overflow-x: hidden;
+  overflow: hidden;  
 }
 /* Large decorative text behind everything */
 .login-container::before {
@@ -153,47 +153,60 @@ overflow-y: auto;
    LOGO — TOP CENTER
    ============================================================ */
 .login-logo {
-  position: fixed;
-  top: 44px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: static;
+transform: none;
+justify-content: center;
+margin-bottom: 32px;   /* отступ между лого и карточкой */
   display: flex;
   align-items: center;
   gap: 12px;
   z-index: 10;
-  opacity: 0;
-  animation: fadeDown 0.6s ease 0.2s forwards;
+  background: var(--c-mint-dim);
 }
-
 .login-logo-mark {
-  width: 24px;
-  height: 24px;
-  border: 1.5px solid var(--accent);
-  transform: rotate(45deg);
-  position: relative;
-  flex-shrink: 0;
+  width: auto;
+  height: auto;
+  border: none;
+  transform: none;
 }
 
 .login-logo-mark::after {
-  content: '';
-  position: absolute;
-  inset: 5px;
-  background: var(--accent);
+  display: none;
+}
+
+.login-logo img {
+  height: 40px;
+}
+
+.login-wrapper {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 480px;
+  padding: 0 16px;  
+}
+.login-logo-mark img {
+  height: 60px;
+  width: auto;
+  display: block;
+
 }
 
 .login-logo-text {
-  font-size: 24px;
-  letter-spacing: 0.4em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+  font-size: 42px;
+  letter-spacing: 0.25em;
 }
-
+.login-logo {
+  opacity: 0;
+  animation: fadeDown 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+}
 /* ============================================================
    THE CARD
    ============================================================ */
 .login-card {
-  position: relative;
-  z-index: 10;
   width: 100%;
   max-width: 480px;
   padding: 56px 60px 52px;
@@ -484,10 +497,9 @@ overflow-y: auto;
 }
 
 @keyframes fadeDown {
-  from { opacity: 0; transform: translate(-50%, -10px); }
-  to   { opacity: 1; transform: translate(-50%, 0); }
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes fadeIn {
   to { opacity: 1; }
 }
@@ -526,4 +538,21 @@ overflow-y: auto;
   .login-bracket { display: none; }
 
   .login-title { font-size: 34px; }
+    /* добавь: */
+  .login-logo-mark img {
+    height: 36px;   /* было 60px */
+  }
+
+  .login-logo-text {
+    font-size: 24px;         /* было 42px */
+    letter-spacing: 0.15em;  /* было 0.25em */
+  }
+
+  .login-wrapper {
+    padding: 0 12px;
+  }
+
+  .login-logo {
+    margin-bottom: 20px;  /* чуть меньше отступ */
+  }
 }

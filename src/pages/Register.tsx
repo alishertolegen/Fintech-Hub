@@ -219,10 +219,12 @@ const [countriesLoading, setCountriesLoading] = useState(false);
 
       {/* ==================== LEFT EDITORIAL PANEL ==================== */}
       <aside className="register-left-panel">
-        <div className="left-logo">
-          <div className="left-logo-mark" />
-          <span className="left-logo-text">FINTECH HUB</span>
-        </div>
+        <div className="left-logo navbar-logo">
+  <div className="logo-mark left-logo-mark">
+    <img src="/logo_fintech_transparent.png" alt="logo" />
+  </div>
+  <span className="logo-text left-logo-text">FINTECH<em>HUB</em></span>
+</div>
         <div className="left-headline">
           <div className="left-headline-line"><span>BUILD</span></div>
           <div className="left-headline-line"><span>BOLD</span></div>

@@ -108,7 +108,7 @@ body {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: var(--c-mint-dim);
+  background: rgb(255, 255, 255);;
   border: 1px solid var(--c-border);
   display: flex;
   align-items: center;
@@ -137,6 +137,7 @@ body {
   position: absolute;
   inset: -2px;
   border-radius: 12px;
+  border: rgba(122, 131, 255, 0.15);
   background: white;
   opacity: 0;
   transition: opacity 0.3s;

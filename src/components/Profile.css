@@ -155,6 +155,7 @@ html {
 .pf-avatar-ring img,
 .pf-initials {
   width: 76px; height: 76px; border-radius: 50%; object-fit: cover;
+  overflow: hidden; 
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-display); font-weight: 800; font-size: 1.6rem;
   background: linear-gradient(135deg, #1a2035, #111827);
