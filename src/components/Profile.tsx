@@ -1,5 +1,6 @@
 // src/components/Profile.tsx
 import React, { useEffect, useState } from 'react';
+import Select from 'react-select';
 import {
   Mail, Phone, MapPin, Briefcase, Pencil, Check, X,
   Globe, TrendingUp, Layers, Shield, DollarSign,
@@ -9,6 +10,39 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import './Profile.css';
+
+/* ─── Constants ──────────────────────────────────────────────────── */
+interface SelectOption { value: string; label: string }
+
+const STAGES: SelectOption[] = [
+  { value: 'idea',     label: '💡 Idea'     },
+  { value: 'pre-seed', label: '🌱 Pre-seed' },
+  { value: 'seed',     label: '🚀 Seed'     },
+  { value: 'series-a', label: '📈 Series A' },
+  { value: 'growth',   label: '⚡ Growth'   },
+  { value: 'mature',   label: '🏛️ Mature'   },
+];
+
+const INDUSTRIES: SelectOption[] = [
+  { value: 'fintech',       label: '💳 Fintech'       },
+  { value: 'saas',          label: '☁️ SaaS'          },
+  { value: 'e-commerce',    label: '🛒 E-commerce'    },
+  { value: 'edtech',        label: '🎓 EdTech'        },
+  { value: 'healthtech',    label: '🏥 HealthTech'    },
+  { value: 'ai-ml',         label: '🤖 AI / ML'       },
+  { value: 'logistics',     label: '🚚 Logistics'     },
+  { value: 'agritech',      label: '🌾 AgriTech'      },
+  { value: 'cleantech',     label: '♻️ CleanTech'     },
+  { value: 'proptech',      label: '🏠 PropTech'      },
+  { value: 'legaltech',     label: '⚖️ LegalTech'     },
+  { value: 'cybersecurity', label: '🔒 Cybersecurity' },
+  { value: 'gaming',        label: '🎮 Gaming'        },
+  { value: 'media',         label: '📱 Media'         },
+  { value: 'marketplace',   label: '🏪 Marketplace'   },
+  { value: 'hr-tech',       label: '👥 HR Tech'       },
+  { value: 'biotech',       label: '🧬 Biotech'       },
+  { value: 'construction',  label: '🏗️ Construction'  },
+];
 
 /* ─── Types ─────────────────────────────────────────────────────── */
 type ApiUser = {
@@ -44,14 +78,36 @@ type Offer = {
   status?: string; note?: string; createdAt?: string;
 };
 
-// Form state for editing user profile
 type UserEditForm = {
   name: string;
   company: string;
   bio: string;
   avatarUrl: string;
   phone: string;
+  location: SelectOption | null;
+};
+
+type UserFormErrors = {
+  name: string;
+  phone: string;
   location: string;
+};
+
+/* ─── Validation ─────────────────────────────────────────────────── */
+const validateName = (v: string) => {
+  if (!v.trim()) return 'Имя обязательно.';
+  if (v.trim().length < 2) return 'Минимум 2 символа.';
+  return '';
+};
+const validatePhone = (v: string) => {
+  if (!v.trim()) return '';  // phone optional in profile
+  if (!/^(\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}$/.test(v.trim()))
+    return 'Формат: +7 (777) 123-45-67';
+  return '';
+};
+const validateLocation = (v: SelectOption | null) => {
+  // optional in profile edit
+  return '';
 };
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
@@ -78,7 +134,18 @@ function fmtPct(n?: number | null) {
   return `${(n * 100).toFixed(2)}%`;
 }
 
+/** Returns value or "Не указано" */
+const orNA = (v?: string | null) => (v && v.trim()) ? v.trim() : 'Не указано';
+
 const PALETTE = ['#ff8c6b', '#60a5fa', '#c084fc', '#4ade80', '#fbbf24', '#f472b6'];
+
+/* ─── Shared Select styles (same classNamePrefix as Register) ─────── */
+const selectCommonProps = {
+  classNamePrefix: 'country-select' as const,
+  menuPortalTarget: typeof document !== 'undefined' ? document.body : undefined,
+  menuPosition: 'fixed' as const,
+  noOptionsMessage: () => 'Не найдено',
+};
 
 /* ─── Startup Card ──────────────────────────────────────────────── */
 function StartupCard({ startup, offers, investments }: {
@@ -117,7 +184,6 @@ function StartupCard({ startup, offers, investments }: {
         <div className="pf-startup-toggle">{expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</div>
       </div>
 
-      {/* Metrics strip */}
       <div className="pf-metrics-strip">
         <div className="pf-metric-cell">
           <div className="pf-metric-label orange"><Flame size={8} style={{display:'inline',marginRight:2}}/>MRR</div>
@@ -143,7 +209,6 @@ function StartupCard({ startup, offers, investments }: {
         )}
       </div>
 
-      {/* Expanded detail */}
       {expanded && (
         <div className="pf-startup-detail">
           {startup.description && (
@@ -220,28 +285,54 @@ export default function Profile() {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
   const [investor, setInvestor] = useState<InvestorApi | null>(null);
-  
-  // User profile editing state
-  const [editingUser, setEditingUser]   = useState(false);
-  const [userForm, setUserForm]         = useState<UserEditForm>({ name: '', company: '', bio: '', avatarUrl: '', phone: '', location: '' });
-  const [userSaving, setUserSaving]     = useState(false);
-  const [userSaveError, setUserSaveError] = useState<string | null>(null);
 
-  // Investor profile editing state
-  const [editingInvestor, setEditingInvestor] = useState(false);
-  const [investorSaving, setInvestorSaving]   = useState(false);
+  // Countries for location Select
+  const [countries, setCountries]               = useState<SelectOption[]>([]);
+  const [countriesLoading, setCountriesLoading] = useState(false);
 
-  const [investments, setInvestments]         = useState<Investment[]>([]);
-  const [loadingInv, setLoadingInv]           = useState(false);
-  const [startups, setStartups]               = useState<Startup[]>([]);
-  const [loadingStartups, setLoadingStartups] = useState(false);
-  const [founderOffers, setFounderOffers]     = useState<Offer[]>([]);
-  const [founderInvestments, setFounderInvestments] = useState<Investment[]>([]);
+  // User profile editing
+  const [editingUser, setEditingUser]         = useState(false);
+  const [userForm, setUserForm]               = useState<UserEditForm>({
+    name: '', company: '', bio: '', avatarUrl: '', phone: '', location: null,
+  });
+  const [userFormErrors, setUserFormErrors]   = useState<UserFormErrors>({ name: '', phone: '', location: '' });
+  const [touchedFields, setTouchedFields]     = useState<Partial<Record<keyof UserFormErrors, boolean>>>({});
+  const [userSaving, setUserSaving]           = useState(false);
+  const [userSaveError, setUserSaveError]     = useState<string | null>(null);
 
-  /* fetch user */
+  // Investor profile editing
+  const [editingInvestor, setEditingInvestor]     = useState(false);
+  const [investorSaving, setInvestorSaving]       = useState(false);
+  // investor Select fields
+  const [invIndustries, setInvIndustries]         = useState<SelectOption[]>([]);
+  const [invStages, setInvStages]                 = useState<SelectOption[]>([]);
+
+  const [investments, setInvestments]                   = useState<Investment[]>([]);
+  const [loadingInv, setLoadingInv]                     = useState(false);
+  const [startups, setStartups]                         = useState<Startup[]>([]);
+  const [loadingStartups, setLoadingStartups]           = useState(false);
+  const [founderOffers, setFounderOffers]               = useState<Offer[]>([]);
+  const [founderInvestments, setFounderInvestments]     = useState<Investment[]>([]);
+
+  /* ── Load countries ── */
+  useEffect(() => {
+    setCountriesLoading(true);
+    fetch('https://restcountries.com/v3.1/all?fields=name,cca2')
+      .then(r => r.json())
+      .then((data: any[]) => {
+        const opts = data
+          .map((c: any) => ({ value: c.cca2, label: c.name.common }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+        setCountries(opts);
+      })
+      .catch(() => {})
+      .finally(() => setCountriesLoading(false));
+  }, []);
+
+  /* ── Fetch user ── */
   useEffect(() => {
     if (authUser) {
-      const u: ApiUser = {
+      setUser({
         id: authUser.id,
         email: authUser.email,
         name: authUser.fullName ?? authUser.email,
@@ -251,8 +342,7 @@ export default function Profile() {
         phone: authUser.phone,
         location: authUser.location,
         role: authUser.role,
-      };
-      setUser(u);
+      });
       return;
     }
     if (!authLoading && token) {
@@ -287,21 +377,22 @@ export default function Profile() {
     }
   }, [authUser, token, authLoading]);
 
-  /* sync userForm when user loads */
+  /* ── Sync userForm when user loads ── */
   useEffect(() => {
     if (user) {
+      const locVal = user.location ?? user.meta?.location ?? '';
       setUserForm({
         name: user.name ?? '',
         company: user.company ?? '',
         bio: user.bio ?? '',
         avatarUrl: user.avatarUrl ?? '',
         phone: user.phone ?? user.meta?.phone ?? '',
-        location: user.location ?? user.meta?.location ?? '',
+        location: locVal ? { value: locVal, label: locVal } : null,
       });
     }
   }, [user]);
 
-  /* fetch investor profile */
+  /* ── Fetch investor profile ── */
   useEffect(() => {
     if (!user || user.role !== 'investor') return;
     const abort = new AbortController();
@@ -311,13 +402,23 @@ export default function Profile() {
           headers: { Authorization: `Bearer ${token}` },
           signal: abort.signal,
         });
-        if (res.ok) setInvestor(await res.json());
+        if (res.ok) {
+          const data: InvestorApi = await res.json();
+          setInvestor(data);
+          // Sync Select states
+          setInvIndustries(
+            (data.preferredIndustries ?? []).map(v => INDUSTRIES.find(i => i.value === v) ?? { value: v, label: v })
+          );
+          setInvStages(
+            (data.preferredStages ?? []).map(v => STAGES.find(s => s.value === v) ?? { value: v, label: v })
+          );
+        }
       } catch (e: any) { if (e.name !== 'AbortError') console.error(e); }
     })();
     return () => abort.abort();
   }, [user, token]);
 
-  /* fetch investments for investor */
+  /* ── Fetch investments ── */
   useEffect(() => {
     if (!user || user.role !== 'investor') return;
     const abort = new AbortController();
@@ -335,7 +436,7 @@ export default function Profile() {
     return () => abort.abort();
   }, [user, token]);
 
-  /* fetch startups + offers + investments for founder */
+  /* ── Fetch startups + offers + investments for founder ── */
   useEffect(() => {
     if (!user || user.role !== 'founder') return;
     const abort = new AbortController();
@@ -370,19 +471,44 @@ export default function Profile() {
     return () => abort.abort();
   }, [user, token]);
 
-  /* ── Save user profile via PUT /api/users/me ── */
+  /* ── Validation helpers ── */
+  const touchField = (field: keyof UserFormErrors) =>
+    setTouchedFields(p => ({ ...p, [field]: true }));
+
+  const updateFieldError = (field: keyof UserFormErrors, msg: string) =>
+    setUserFormErrors(p => ({ ...p, [field]: msg }));
+
+  const getInputClass = (field: keyof UserFormErrors) =>
+    `pf-input${touchedFields[field] && userFormErrors[field] ? ' pf-input-error' : touchedFields[field] && !userFormErrors[field] ? ' pf-input-valid' : ''}`;
+
+  const validateUserForm = (): boolean => {
+    const errors: UserFormErrors = {
+      name:     validateName(userForm.name),
+      phone:    validatePhone(userForm.phone),
+      location: validateLocation(userForm.location),
+    };
+    setUserFormErrors(errors);
+    setTouchedFields({ name: true, phone: true, location: true });
+    return Object.values(errors).every(e => e === '');
+  };
+
+  /* ── Save user profile ── */
   async function saveUser() {
     if (!token) return;
+    if (!validateUserForm()) {
+      setUserSaveError('Исправьте ошибки в форме.');
+      return;
+    }
     setUserSaving(true);
     setUserSaveError(null);
     try {
       const body = {
-        name: userForm.name || undefined,
-        company: userForm.company || undefined,
-        bio: userForm.bio || undefined,
+        name:      userForm.name     || undefined,
+        company:   userForm.company  || undefined,
+        bio:       userForm.bio      || undefined,
         avatarUrl: userForm.avatarUrl || undefined,
-        phone: userForm.phone || undefined,
-        location: userForm.location || undefined,
+        phone:     userForm.phone    || undefined,
+        location:  userForm.location?.label || undefined,
       };
       const res = await fetch('http://localhost:8080/api/users/me', {
         method: 'PUT',
@@ -394,31 +520,30 @@ export default function Profile() {
         throw new Error(j.message ?? `Ошибка ${res.status}`);
       }
       const updated: ApiUser = await res.json();
-      // Update local user state with fresh data from server
       setUser({
         ...user,
-        name: updated.name ?? updated.fullName,
-        company: updated.company,
-        bio: updated.bio,
+        name:     updated.name ?? updated.fullName,
+        company:  updated.company,
+        bio:      updated.bio,
         avatarUrl: updated.avatarUrl,
-        phone: updated.meta?.phone ?? updated.phone,
+        phone:    updated.meta?.phone ?? updated.phone,
         location: updated.meta?.location ?? updated.location,
       });
       if (updateUser) {
-        const authUpd = {
-        id: authUser?.id ?? user?.id ?? '',
-        email: authUser?.email ?? user?.email ?? '',
-        fullName: updated.name ?? updated.fullName ?? authUser?.fullName ?? '',
-        company: updated.company ?? authUser?.company ?? '',
-        bio: updated.bio ?? authUser?.bio ?? '',
-        avatarUrl: updated.avatarUrl ?? authUser?.avatarUrl ?? '',
-        phone: updated.meta?.phone ?? updated.phone ?? authUser?.phone ?? '',
-        location: updated.meta?.location ?? updated.location ?? authUser?.location ?? '',
-        role: authUser?.role ?? 'user',
-      };
-        updateUser(authUpd);
+        updateUser({
+          id:       authUser?.id ?? user?.id ?? '',
+          email:    authUser?.email ?? user?.email ?? '',
+          fullName: updated.name ?? updated.fullName ?? authUser?.fullName ?? '',
+          company:  updated.company ?? authUser?.company ?? '',
+          bio:      updated.bio ?? authUser?.bio ?? '',
+          avatarUrl: updated.avatarUrl ?? authUser?.avatarUrl ?? '',
+          phone:    updated.meta?.phone ?? updated.phone ?? authUser?.phone ?? '',
+          location: updated.meta?.location ?? updated.location ?? authUser?.location ?? '',
+          role:     authUser?.role ?? 'user',
+        });
       }
       setEditingUser(false);
+      setTouchedFields({});
     } catch (e: any) {
       setUserSaveError(e.message ?? 'Не удалось сохранить профиль');
     } finally {
@@ -427,17 +552,19 @@ export default function Profile() {
   }
 
   function cancelEditUser() {
-    // Reset form to current user data
     if (user) {
+      const locVal = user.location ?? user.meta?.location ?? '';
       setUserForm({
-        name: user.name ?? '',
-        company: user.company ?? '',
-        bio: user.bio ?? '',
+        name:      user.name ?? '',
+        company:   user.company ?? '',
+        bio:       user.bio ?? '',
         avatarUrl: user.avatarUrl ?? '',
-        phone: user.phone ?? user.meta?.phone ?? '',
-        location: user.location ?? user.meta?.location ?? '',
+        phone:     user.phone ?? user.meta?.phone ?? '',
+        location:  locVal ? { value: locVal, label: locVal } : null,
       });
     }
+    setUserFormErrors({ name: '', phone: '', location: '' });
+    setTouchedFields({});
     setUserSaveError(null);
     setEditingUser(false);
   }
@@ -447,16 +574,24 @@ export default function Profile() {
     if (!user) return;
     setInvestorSaving(true);
     try {
+      const payload = {
+        ...updated,
+        preferredIndustries: invIndustries.map(i => i.value),
+        preferredStages:     invStages.map(s => s.value),
+      };
       const url = updated.id
         ? `http://localhost:8080/api/investors/${updated.id}`
         : `http://localhost:8080/api/investors/user/${user.id}`;
       const res = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(updated),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.message ?? `Ошибка ${res.status}`); }
-      setInvestor(await res.json());
+      const saved: InvestorApi = await res.json();
+      setInvestor(saved);
+      setInvIndustries((saved.preferredIndustries ?? []).map(v => INDUSTRIES.find(i => i.value === v) ?? { value: v, label: v }));
+      setInvStages((saved.preferredStages ?? []).map(v => STAGES.find(s => s.value === v) ?? { value: v, label: v }));
       setEditingInvestor(false);
     } catch (e: any) {
       alert('Ошибка: ' + e.message);
@@ -465,7 +600,7 @@ export default function Profile() {
     }
   }
 
-  /* Derived */
+  /* ── Derived values ── */
   const isInvestor = user?.role === 'investor';
   const isFounder  = user?.role === 'founder';
 
@@ -478,13 +613,20 @@ export default function Profile() {
   const founderPendingOffers  = founderOffers.filter(o => o.status === 'sent' || o.status === 'pending').length;
   const founderAcceptedOffers = founderOffers.filter(o => o.status === 'accepted').length;
 
-  /* Portfolio bar */
   const segmented = investments.slice(0, 5).map((inv, idx) => ({
     id: inv.startupId ?? idx.toString(), amount: inv.amount ?? 0, color: PALETTE[idx % PALETTE.length],
   }));
   const segTotal = segmented.reduce((s, x) => s + x.amount, 0);
 
-  /* ── States ── */
+  /* ── Display values (editing or saved) ── */
+  const displayName     = editingUser ? userForm.name         : orNA(user?.name);
+  const displayCompany  = editingUser ? userForm.company      : (user?.company ?? '');
+  const displayBio      = editingUser ? userForm.bio          : (user?.bio ?? '');
+  const displayPhone    = editingUser ? userForm.phone        : orNA(user?.phone ?? user?.meta?.phone);
+  const displayLocation = editingUser ? (userForm.location?.label ?? '') : orNA(user?.location ?? user?.meta?.location);
+  const displayAvatar   = editingUser ? userForm.avatarUrl    : (user?.avatarUrl ?? '');
+
+  /* ── Loading / error states ── */
   if (authLoading || loading) return (
     <div className="pf-page"><div className="pf-state"><div className="pf-spinner" />Загрузка профиля…</div></div>
   );
@@ -494,14 +636,6 @@ export default function Profile() {
   if (!user) return (
     <div className="pf-page"><div className="pf-state">Профиль недоступен — пожалуйста, войдите.</div></div>
   );
-
-  // Derive displayed values: if editing, show form values; otherwise show saved user values
-  const displayName     = editingUser ? userForm.name     : (user.name ?? '—');
-  const displayCompany  = editingUser ? userForm.company  : (user.company ?? '');
-  const displayBio      = editingUser ? userForm.bio      : (user.bio ?? '');
-  const displayPhone    = editingUser ? userForm.phone    : (user.phone ?? user.meta?.phone ?? '—');
-  const displayLocation = editingUser ? userForm.location : (user.location ?? user.meta?.location ?? '—');
-  const displayAvatar   = editingUser ? userForm.avatarUrl : (user.avatarUrl ?? '');
 
   return (
     <div className="pf-page">
@@ -601,15 +735,17 @@ export default function Profile() {
               {/* Contacts */}
               <div className="pf-hero-contacts">
                 {[
-                  { icon: <Mail size={13} />, label: 'Email', value: user.email ?? '—' },
-                  { icon: <Phone size={13} />, label: 'Телефон', value: displayPhone },
-                  { icon: <MapPin size={13} />, label: 'Местоположение', value: displayLocation },
+                  { icon: <Mail size={13} />,   label: 'Email',           value: user.email ?? 'Не указано' },
+                  { icon: <Phone size={13} />,  label: 'Телефон',         value: displayPhone               },
+                  { icon: <MapPin size={13} />, label: 'Местоположение',  value: displayLocation            },
                 ].map(({ icon, label, value }) => (
                   <div className="pf-contact-row" key={label}>
                     <div className="pf-contact-icon">{icon}</div>
                     <div>
                       <div className="pf-contact-label">{label}</div>
-                      <div className="pf-contact-value" title={value}>{value}</div>
+                      <div className={`pf-contact-value${value === 'Не указано' ? ' pf-not-set' : ''}`} title={value}>
+                        {value}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -639,7 +775,9 @@ export default function Profile() {
                             background: `${PALETTE[i % PALETTE.length]}18`,
                             borderColor: `${PALETTE[i % PALETTE.length]}30`,
                             color: PALETTE[i % PALETTE.length],
-                          }}>{s}</span>
+                          }}>
+                            {STAGES.find(st => st.value === s)?.label ?? s}
+                          </span>
                         ))}
                       </div>
                     </>
@@ -649,7 +787,9 @@ export default function Profile() {
                       <div className="pf-tags-label" style={{ marginTop: 8 }}>Отрасли</div>
                       <div className="pf-tag-list">
                         {investor!.preferredIndustries!.map(ind => (
-                          <span key={ind} className="pf-tag">{ind}</span>
+                          <span key={ind} className="pf-tag">
+                            {INDUSTRIES.find(i => i.value === ind)?.label ?? ind}
+                          </span>
                         ))}
                       </div>
                     </>
@@ -666,7 +806,7 @@ export default function Profile() {
                 </div>
               )}
 
-              {/* Actions: Edit user profile button (shown when not editing anything) */}
+              {/* Actions */}
               {!editingUser && !editingInvestor && (
                 <div className="pf-hero-actions">
                   <button className="pf-btn pf-btn-primary pf-btn-full" onClick={() => setEditingUser(true)}>
@@ -686,7 +826,7 @@ export default function Profile() {
           {/* ════ RIGHT PANEL ════ */}
           <div className="pf-panel">
 
-            {/* ── USER PROFILE EDIT SECTION (all roles) ── */}
+            {/* ── USER PROFILE EDIT ── */}
             {editingUser && (
               <div className="pf-section">
                 <div className="pf-section-head">
@@ -705,21 +845,29 @@ export default function Profile() {
                 </div>
 
                 {userSaveError && (
-                  <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: 'rgba(255, 80, 80, 0.1)', border: '1px solid rgba(255, 80, 80, 0.25)', color: '#ff6b6b', fontSize: 13 }}>
+                  <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.25)', color: '#ff6b6b', fontSize: 13 }}>
                     ⚠ {userSaveError}
                   </div>
                 )}
 
                 <div className="pf-form">
+                  {/* Name + Company */}
                   <div className="pf-form-row">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-                      <label className="pf-input-label">Имя</label>
+                      <label className="pf-input-label">Имя <span style={{ color: 'var(--accent)' }}>*</span></label>
                       <input
-                        className="pf-input"
+                        className={getInputClass('name')}
                         placeholder="Ваше имя"
                         value={userForm.name}
-                        onChange={e => setUserForm(f => ({ ...f, name: e.target.value }))}
+                        onChange={e => {
+                          setUserForm(f => ({ ...f, name: e.target.value }));
+                          updateFieldError('name', validateName(e.target.value));
+                        }}
+                        onBlur={() => { touchField('name'); updateFieldError('name', validateName(userForm.name)); }}
                       />
+                      {touchedFields.name && userFormErrors.name && (
+                        <span style={{ fontSize: 11, color: '#ff6b6b' }}>{userFormErrors.name}</span>
+                      )}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
                       <label className="pf-input-label">Компания</label>
@@ -731,6 +879,8 @@ export default function Profile() {
                       />
                     </div>
                   </div>
+
+                  {/* Bio */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <label className="pf-input-label">Био</label>
                     <textarea
@@ -740,6 +890,8 @@ export default function Profile() {
                       onChange={e => setUserForm(f => ({ ...f, bio: e.target.value }))}
                     />
                   </div>
+
+                  {/* Avatar */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <label className="pf-input-label">URL аватара</label>
                     <input
@@ -749,23 +901,34 @@ export default function Profile() {
                       onChange={e => setUserForm(f => ({ ...f, avatarUrl: e.target.value }))}
                     />
                   </div>
+
+                  {/* Phone + Location */}
                   <div className="pf-form-row">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
                       <label className="pf-input-label">Телефон</label>
                       <input
-                        className="pf-input"
+                        className={getInputClass('phone')}
                         placeholder="+7 777 000 00 00"
                         value={userForm.phone}
-                        onChange={e => setUserForm(f => ({ ...f, phone: e.target.value }))}
+                        onChange={e => {
+                          setUserForm(f => ({ ...f, phone: e.target.value }));
+                          updateFieldError('phone', validatePhone(e.target.value));
+                        }}
+                        onBlur={() => { touchField('phone'); updateFieldError('phone', validatePhone(userForm.phone)); }}
                       />
+                      {touchedFields.phone && userFormErrors.phone && (
+                        <span style={{ fontSize: 11, color: '#ff6b6b' }}>{userFormErrors.phone}</span>
+                      )}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
                       <label className="pf-input-label">Местоположение</label>
-                      <input
-                        className="pf-input"
-                        placeholder="Алматы, Казахстан"
+                      <Select
+                        {...selectCommonProps}
+                        options={countries}
                         value={userForm.location}
-                        onChange={e => setUserForm(f => ({ ...f, location: e.target.value }))}
+                        isLoading={countriesLoading}
+                        placeholder="Выберите страну…"
+                        onChange={opt => setUserForm(f => ({ ...f, location: opt as SelectOption | null }))}
                       />
                     </div>
                   </div>
@@ -776,7 +939,6 @@ export default function Profile() {
             {/* ── INVESTOR SECTIONS ── */}
             {isInvestor && (
               <>
-                {/* Investor profile edit / view */}
                 <div className="pf-section">
                   <div className="pf-section-head">
                     <div className="pf-section-label">
@@ -804,18 +966,23 @@ export default function Profile() {
                   {!editingInvestor ? (
                     <div className="pf-data-grid">
                       {[
-                        { key: 'Юридическое имя', val: investor?.legalName ?? '—' },
-                        { key: 'Тип инвестора',   val: investor?.type ?? '—' },
+                        { key: 'Юридическое имя', val: orNA(investor?.legalName) },
+                        { key: 'Тип инвестора',   val: orNA(investor?.type)      },
                       ].map(({ key, val }) => (
                         <div className="pf-data-item" key={key}>
                           <div className="pf-data-key">{key}</div>
-                          <div className="pf-data-val">{val}</div>
+                          <div className={`pf-data-val${val === 'Не указано' ? ' pf-not-set' : ''}`}>{val}</div>
                         </div>
                       ))}
-                      {investor?.description && (
+                      {investor?.description ? (
                         <div className="pf-data-item full">
                           <div className="pf-data-key">Описание</div>
                           <div className="pf-data-val">{investor.description}</div>
+                        </div>
+                      ) : (
+                        <div className="pf-data-item full">
+                          <div className="pf-data-key">Описание</div>
+                          <div className="pf-data-val pf-not-set">Не указано</div>
                         </div>
                       )}
                     </div>
@@ -837,12 +1004,33 @@ export default function Profile() {
                           value={investor?.maxCheck ?? ''}
                           onChange={e => setInvestor(p => ({ ...(p ?? {}), maxCheck: e.target.value ? Number(e.target.value) : undefined }))} />
                       </div>
-                      <input className="pf-input" placeholder="Отрасли (через запятую)"
-                        value={(investor?.preferredIndustries ?? []).join(', ')}
-                        onChange={e => setInvestor(p => ({ ...(p ?? {}), preferredIndustries: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))} />
-                      <input className="pf-input" placeholder="Стадии (через запятую)"
-                        value={(investor?.preferredStages ?? []).join(', ')}
-                        onChange={e => setInvestor(p => ({ ...(p ?? {}), preferredStages: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))} />
+
+                      {/* Industries Select */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <label className="pf-input-label">Отрасли</label>
+                        <Select
+                          {...selectCommonProps}
+                          isMulti
+                          options={INDUSTRIES}
+                          value={invIndustries}
+                          placeholder="Выберите отрасли…"
+                          onChange={opts => setInvIndustries(opts as SelectOption[])}
+                        />
+                      </div>
+
+                      {/* Stages Select */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <label className="pf-input-label">Стадии</label>
+                        <Select
+                          {...selectCommonProps}
+                          isMulti
+                          options={STAGES}
+                          value={invStages}
+                          placeholder="Выберите стадии…"
+                          onChange={opts => setInvStages(opts as SelectOption[])}
+                        />
+                      </div>
+
                       <input className="pf-input" placeholder="Сайт"
                         value={investor?.website ?? ''}
                         onChange={e => setInvestor(p => ({ ...(p ?? {}), website: e.target.value }))} />
@@ -853,7 +1041,7 @@ export default function Profile() {
                   )}
                 </div>
 
-                {/* Summary stats */}
+                {/* Portfolio stats */}
                 <div className="pf-section">
                   <div className="pf-section-head">
                     <div className="pf-section-label"><BarChart2 size={10} className="icon-green" />Портфель</div>
@@ -883,7 +1071,7 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {/* Portfolio distribution bar */}
+                {/* Portfolio bar */}
                 {segTotal > 0 && (
                   <div className="pf-section">
                     <div className="pf-section-head">
@@ -908,7 +1096,7 @@ export default function Profile() {
                   </div>
                 )}
 
-                {/* Investment list */}
+                {/* Investments list */}
                 <div className="pf-section">
                   <div className="pf-section-head">
                     <div className="pf-section-label"><Clock size={10} className="icon-blue" />Последние сделки</div>
@@ -956,7 +1144,6 @@ export default function Profile() {
             {/* ── FOUNDER SECTIONS ── */}
             {isFounder && (
               <>
-                {/* Summary stats */}
                 <div className="pf-section">
                   <div className="pf-section-head">
                     <div className="pf-section-label"><Rocket size={10} className="icon-orange" />Обзор</div>
@@ -985,7 +1172,6 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {/* Startup cards */}
                 <div className="pf-section">
                   <div className="pf-section-head">
                     <div className="pf-section-label"><Rocket size={10} className="icon-orange" />Мои стартапы</div>

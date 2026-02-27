@@ -693,3 +693,15 @@ html {
   .pf-metrics-strip { flex-wrap: wrap; }
   .pf-metric-cell { min-width: 50%; }
 }
+.pf-not-set {
+  color: var(--text-muted) !important;
+  font-style: italic;
+}
+
+.pf-input-error {
+  border-color: #e53e3e !important;
+}
+
+.pf-input-valid {
+  border-color: #48bb78 !important;
+}
