@@ -187,6 +187,10 @@ margin-bottom: 32px;   /* отступ между лого и карточкой
   width: 100%;
   max-width: 480px;
   padding: 0 16px;  
+    margin-top: -52px;
+  padding-top: 72px;
+  min-height: 100vh;
+  box-sizing: border-box;
 }
 .login-logo-mark img {
   height: 60px;

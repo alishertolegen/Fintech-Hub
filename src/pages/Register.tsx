@@ -9,6 +9,35 @@ interface CountryOption {
   value: string;
   label: string;
 }
+const STAGES = [
+  { value: 'idea',     label: '💡 Idea'     },
+  { value: 'pre-seed', label: '🌱 Pre-seed' },
+  { value: 'seed',     label: '🚀 Seed'     },
+  { value: 'series-a', label: '📈 Series A' },
+  { value: 'growth',   label: '⚡ Growth'   },
+  { value: 'mature',   label: '🏛️ Mature'   },
+];
+
+const INDUSTRIES = [
+  { value: 'fintech',        label: '💳 Fintech'        },
+  { value: 'saas',           label: '☁️ SaaS'           },
+  { value: 'e-commerce',     label: '🛒 E-commerce'     },
+  { value: 'edtech',         label: '🎓 EdTech'         },
+  { value: 'healthtech',     label: '🏥 HealthTech'     },
+  { value: 'ai-ml',          label: '🤖 AI / ML'        },
+  { value: 'logistics',      label: '🚚 Logistics'      },
+  { value: 'agritech',       label: '🌾 AgriTech'       },
+  { value: 'cleantech',      label: '♻️ CleanTech'      },
+  { value: 'proptech',       label: '🏠 PropTech'       },
+  { value: 'legaltech',      label: '⚖️ LegalTech'      },
+  { value: 'cybersecurity',  label: '🔒 Cybersecurity'  },
+  { value: 'gaming',         label: '🎮 Gaming'         },
+  { value: 'media',          label: '📱 Media'          },
+  { value: 'marketplace',    label: '🏪 Marketplace'    },
+  { value: 'hr-tech',        label: '👥 HR Tech'        },
+  { value: 'biotech',        label: '🧬 Biotech'        },
+  { value: 'construction',   label: '🏗️ Construction'   },
+];
 // ── Validation helpers ──────────────────────────────────────────────────────
 const validateFullName = (v: string) => {
   if (!v.trim()) return 'Аты-жөні міндетті өріс.';
@@ -84,8 +113,8 @@ const [countriesLoading, setCountriesLoading] = useState(false);
   const [investorType, setInvestorType] = useState('angel');
   const [minCheck, setMinCheck]         = useState<number | ''>('');
   const [maxCheck, setMaxCheck]         = useState<number | ''>('');
-  const [industries, setIndustries]     = useState('');
-  const [stages, setStages]             = useState('');
+const [industries, setIndustries] = useState<CountryOption[]>([]);
+const [stages, setStages]         = useState<CountryOption[]>([]);
   const [website, setWebsite]           = useState('');
 
   // Field-level errors
@@ -163,8 +192,8 @@ const [countriesLoading, setCountriesLoading] = useState(false);
               type: investorType,
               minCheck: minCheck === '' ? undefined : Number(minCheck),
               maxCheck: maxCheck === '' ? undefined : Number(maxCheck),
-              preferredIndustries: industries ? industries.split(',').map(s => s.trim()) : [],
-              preferredStages: stages ? stages.split(',').map(s => s.trim()) : [],
+              preferredIndustries: industries.map(i => i.value),
+preferredStages: stages.map(s => s.value),
               website,
             }
           : undefined;
@@ -223,7 +252,7 @@ const [countriesLoading, setCountriesLoading] = useState(false);
   <div className="logo-mark left-logo-mark">
     <img src="/logo_fintech_transparent.png" alt="logo" />
   </div>
-  <span className="logo-text left-logo-text">FINTECH<em>HUB</em></span>
+  <span className="logo-text left-logo-text">FINTECH <em>HUB</em></span>
 </div>
         <div className="left-headline">
           <div className="left-headline-line"><span>BUILD</span></div>
@@ -459,14 +488,34 @@ const [countriesLoading, setCountriesLoading] = useState(false);
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label optional">Индустрии</label>
-                  <input className="form-input" value={industries} onChange={e => setIndustries(e.target.value)} placeholder="fintech, saas, e-commerce" />
-                </div>
+  <label className="form-label optional">Индустрии</label>
+  <Select
+    isMulti
+    options={INDUSTRIES}
+    value={industries}
+    onChange={(opts) => setIndustries(opts as CountryOption[])}
+    placeholder="Таңдаңыз..."
+    noOptionsMessage={() => 'Табылмады'}
+    menuPortalTarget={document.body}
+    menuPosition="fixed"
+    classNamePrefix="country-select"
+  />
+</div>
 
-                <div className="form-group">
-                  <label className="form-label optional">Стадии</label>
-                  <input className="form-input" value={stages} onChange={e => setStages(e.target.value)} placeholder="pre-seed, seed, series-a" />
-                </div>
+<div className="form-group">
+  <label className="form-label optional">Стадии</label>
+  <Select
+    isMulti
+    options={STAGES}
+    value={stages}
+    onChange={(opts) => setStages(opts as CountryOption[])}
+    placeholder="Таңдаңыз..."
+    noOptionsMessage={() => 'Табылмады'}
+    menuPortalTarget={document.body}
+    menuPosition="fixed"
+    classNamePrefix="country-select"
+  />
+</div>
 
                 <div className="form-group">
                   <label className="form-label optional">Website</label>

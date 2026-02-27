@@ -122,7 +122,7 @@ body {
 
 .left-logo .logo-text em {
   font-style: normal;
-  color: var(--c-mint);
+  color: #ff8c6b;
 }
 .left-logo .logo-mark {
   width: 58px; 
@@ -788,4 +788,17 @@ body {
 
 .country-select__input {
   color: #1a202c !important;
+}
+.country-select__multi-value {
+  background-color: #ebf4ff;
+  border-radius: 4px;
+}
+
+.country-select__multi-value__label {
+  color: #1a202c !important;
+}
+
+.country-select__multi-value__remove:hover {
+  background-color: #667eea;
+  color: #ffffff;
 }
