@@ -8,7 +8,26 @@ import { Link } from 'react-router-dom';
 import './StartupsList.css';
 
 const API = 'http://localhost:8080/api/startups';
-
+const INDUSTRIES = [
+  { value: 'fintech',       label: '💳 Fintech'       },
+  { value: 'saas',          label: '☁️ SaaS'          },
+  { value: 'e-commerce',    label: '🛒 E-commerce'    },
+  { value: 'edtech',        label: '🎓 EdTech'        },
+  { value: 'healthtech',    label: '🏥 HealthTech'    },
+  { value: 'ai-ml',         label: '🤖 AI / ML'       },
+  { value: 'logistics',     label: '🚚 Logistics'     },
+  { value: 'agritech',      label: '🌾 AgriTech'      },
+  { value: 'cleantech',     label: '♻️ CleanTech'     },
+  { value: 'proptech',      label: '🏠 PropTech'      },
+  { value: 'legaltech',     label: '⚖️ LegalTech'     },
+  { value: 'cybersecurity', label: '🔒 Cybersecurity' },
+  { value: 'gaming',        label: '🎮 Gaming'        },
+  { value: 'media',         label: '📱 Media'         },
+  { value: 'marketplace',   label: '🏪 Marketplace'   },
+  { value: 'hr-tech',       label: '👥 HR Tech'       },
+  { value: 'biotech',       label: '🧬 Biotech'       },
+  { value: 'construction',  label: '🏗️ Construction'  },
+];
 type MetricsSnapshot = {
   mrr?: number | null;
   users?: number | null;
@@ -174,11 +193,6 @@ export default function StartupsList(): JSX.Element {
     return () => { canceled = true; };
   }, [queryTrigger]);
 
-  const industries = useMemo(() => {
-    const s = new Set<string>();
-    startups.forEach((st) => { if (st.industry) s.add(st.industry); });
-    return Array.from(s).sort();
-  }, [startups]);
 
   // Count startups per stage (for badges)
   const stageCounts = useMemo(() => {
@@ -260,16 +274,16 @@ export default function StartupsList(): JSX.Element {
 
           {/* Industry */}
           <span className="sidebar-section-label">Отрасль</span>
-          <select
-            value={industryFilter}
-            onChange={(e) => setIndustryFilter(e.target.value)}
-            className={`sidebar-select${industryFilter !== 'all' ? ' active' : ''}`}
-          >
-            <option value="all">Все отрасли</option>
-            {industries.map((ind) => (
-              <option key={ind} value={ind}>{ind}</option>
-            ))}
-          </select>
+<select
+  value={industryFilter}
+  onChange={(e) => setIndustryFilter(e.target.value)}
+  className={`sidebar-select${industryFilter !== 'all' ? ' active' : ''}`}
+>
+  <option value="all">Все отрасли</option>
+  {INDUSTRIES.map(({ value, label }) => (
+    <option key={value} value={value}>{label}</option>
+  ))}
+</select>
 
           <div className="sidebar-divider" />
 
@@ -396,7 +410,11 @@ export default function StartupsList(): JSX.Element {
                             <span className="created-date">{formatDate(s.createdAt)}</span>
                           )}
                         </div>
-                        {s.industry  && <span className="industry-pill">{s.industry}</span>}
+                        {s.industry && (
+  <span className="industry-pill">
+    {INDUSTRIES.find(i => i.value === s.industry)?.label ?? s.industry}
+  </span>
+)}
                         {s.shortPitch && <p className="short-pitch">{s.shortPitch}</p>}
                       </div>
                     </div>

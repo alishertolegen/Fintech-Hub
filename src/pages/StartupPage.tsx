@@ -13,7 +13,26 @@ const METRICS_API     = 'http://localhost:8080/api/startup-metrics';
 const USERS_API       = 'http://localhost:8080/api/users';
 const OFFERS_API      = 'http://localhost:8080/api/offers';
 const INVESTMENTS_API = 'http://localhost:8080/api/investments';
-
+const INDUSTRIES = [
+  { value: 'fintech',       label: '💳 Fintech'       },
+  { value: 'saas',          label: '☁️ SaaS'          },
+  { value: 'e-commerce',    label: '🛒 E-commerce'    },
+  { value: 'edtech',        label: '🎓 EdTech'        },
+  { value: 'healthtech',    label: '🏥 HealthTech'    },
+  { value: 'ai-ml',         label: '🤖 AI / ML'       },
+  { value: 'logistics',     label: '🚚 Logistics'     },
+  { value: 'agritech',      label: '🌾 AgriTech'      },
+  { value: 'cleantech',     label: '♻️ CleanTech'     },
+  { value: 'proptech',      label: '🏠 PropTech'      },
+  { value: 'legaltech',     label: '⚖️ LegalTech'     },
+  { value: 'cybersecurity', label: '🔒 Cybersecurity' },
+  { value: 'gaming',        label: '🎮 Gaming'        },
+  { value: 'media',         label: '📱 Media'         },
+  { value: 'marketplace',   label: '🏪 Marketplace'   },
+  { value: 'hr-tech',       label: '👥 HR Tech'       },
+  { value: 'biotech',       label: '🧬 Biotech'       },
+  { value: 'construction',  label: '🏗️ Construction'  },
+];
 /* ── Types ── */
 type MetricsSnapshot = { mrr?: number|null; users?: number|null; valuationPreMoney?: number|null; valuationPostMoney?: number|null; };
 type MetricRecord    = { _id?: string; startupId?: string; date?: string|number|Date; mrr?: number|null; activeUsers?: number|null; burnRate?: number|null; valuationPreMoney?: number|null; valuationPostMoney?: number|null; other?: Record<string,any>|null; };
@@ -379,7 +398,11 @@ const maskPhone = (p?: string|null) => {
               </div>
               <div className="sp-hero-tags">
                 {startup.stage      && <span className="sp-tag sp-tag-stage">{startup.stage}</span>}
-                {startup.industry   && <span className="sp-tag sp-tag-industry">{startup.industry}</span>}
+                {startup.industry && (
+  <span className="sp-tag sp-tag-industry">
+    {INDUSTRIES.find(i => i.value === startup.industry)?.label ?? startup.industry}
+  </span>
+)}
                 {startup.visibility && <span className="sp-tag sp-tag-visibility">{startup.visibility}</span>}
               </div>
             </div>

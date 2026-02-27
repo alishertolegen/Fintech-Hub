@@ -42,7 +42,26 @@ type Startup = {
 };
 
 type SortKey = 'newest' | 'oldest' | 'mrr' | 'users' | 'valuation';
-
+const INDUSTRIES = [
+  { value: 'fintech',       label: '💳 Fintech'       },
+  { value: 'saas',          label: '☁️ SaaS'          },
+  { value: 'e-commerce',    label: '🛒 E-commerce'    },
+  { value: 'edtech',        label: '🎓 EdTech'        },
+  { value: 'healthtech',    label: '🏥 HealthTech'    },
+  { value: 'ai-ml',         label: '🤖 AI / ML'       },
+  { value: 'logistics',     label: '🚚 Logistics'     },
+  { value: 'agritech',      label: '🌾 AgriTech'      },
+  { value: 'cleantech',     label: '♻️ CleanTech'     },
+  { value: 'proptech',      label: '🏠 PropTech'      },
+  { value: 'legaltech',     label: '⚖️ LegalTech'     },
+  { value: 'cybersecurity', label: '🔒 Cybersecurity' },
+  { value: 'gaming',        label: '🎮 Gaming'        },
+  { value: 'media',         label: '📱 Media'         },
+  { value: 'marketplace',   label: '🏪 Marketplace'   },
+  { value: 'hr-tech',       label: '👥 HR Tech'       },
+  { value: 'biotech',       label: '🧬 Biotech'       },
+  { value: 'construction',  label: '🏗️ Construction'  },
+];
 const STAGES = [
   { value: 'all',        label: 'Все' },
   { value: 'idea',       label: 'Idea' },
@@ -113,6 +132,7 @@ export default function MyStartupsPage(): JSX.Element {
   const [startups, setStartups]       = useState<Startup[]>([]);
   const [searchTerm, setSearchTerm]   = useState('');
   const [stageFilter, setStageFilter] = useState('all');
+  const [industryFilter, setIndustryFilter] = useState('all');
   const [sortKey, setSortKey]         = useState<SortKey>('newest');
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
@@ -180,7 +200,9 @@ export default function MyStartupsPage(): JSX.Element {
 
   const filtered = useMemo(() => {
     let list = startups;
-    if (stageFilter !== 'all') list = list.filter((s) => s.stage === stageFilter);
+if (stageFilter !== 'all')  list = list.filter((s) => s.stage === stageFilter);
+if (industryFilter !== 'all') list = list.filter((s) => s.industry === industryFilter);
+
     const q = searchTerm.trim().toLowerCase();
     if (q) {
       list = list.filter((s) =>
@@ -189,7 +211,7 @@ export default function MyStartupsPage(): JSX.Element {
       );
     }
     return sortStartups(list, sortKey);
-  }, [startups, searchTerm, stageFilter, sortKey]);
+  }, [startups, searchTerm, stageFilter, industryFilter, sortKey]);
 
   // ── Auth states ──
   if (authLoading) return <div className="loading-state">Проверка авторизации...</div>;
@@ -236,6 +258,20 @@ export default function MyStartupsPage(): JSX.Element {
           ))}
 
           <div className="sidebar-divider" />
+          
+          <span className="sidebar-section-label">Отрасль</span>
+<select
+  value={industryFilter}
+  onChange={(e) => setIndustryFilter(e.target.value)}
+  className={`sidebar-select${industryFilter !== 'all' ? ' active' : ''}`}
+>
+  <option value="all">Все отрасли</option>
+  {INDUSTRIES.map(({ value, label }) => (
+    <option key={value} value={value}>{label}</option>
+  ))}
+</select>
+
+<div className="sidebar-divider" />
 
           {/* Create button in sidebar */}
           <Link to="/startups/create" className="btn-details" style={{ justifyContent: 'center', marginTop: 4 }}>
@@ -315,7 +351,11 @@ export default function MyStartupsPage(): JSX.Element {
                             <span className="created-date">{formatDate(s.createdAt)}</span>
                           )}
                         </div>
-                        {s.industry   && <span className="industry-pill">{s.industry}</span>}
+                        {s.industry && (
+  <span className="industry-pill">
+    {INDUSTRIES.find(i => i.value === s.industry)?.label ?? s.industry}
+  </span>
+)}
                         {s.shortPitch && <p className="short-pitch">{s.shortPitch}</p>}
                       </div>
                     </div>

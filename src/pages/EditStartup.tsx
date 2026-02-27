@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Check, Globe, Image as ImageIcon, BarChart2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import './CreateStartup.css';
-
+import Select from 'react-select';
 const API         = 'http://localhost:8080/api/startups';
 const STAGES = [
   { value: 'idea',     emoji: '💡', label: 'Idea'     },
@@ -13,7 +13,26 @@ const STAGES = [
   { value: 'growth',   emoji: '⚡', label: 'Growth'   },
   { value: 'mature',   emoji: '🏛️', label: 'Mature'   },
 ];
-
+const INDUSTRIES = [
+  { value: 'fintech',       label: '💳 Fintech'       },
+  { value: 'saas',          label: '☁️ SaaS'          },
+  { value: 'e-commerce',    label: '🛒 E-commerce'    },
+  { value: 'edtech',        label: '🎓 EdTech'        },
+  { value: 'healthtech',    label: '🏥 HealthTech'    },
+  { value: 'ai-ml',         label: '🤖 AI / ML'       },
+  { value: 'logistics',     label: '🚚 Logistics'     },
+  { value: 'agritech',      label: '🌾 AgriTech'      },
+  { value: 'cleantech',     label: '♻️ CleanTech'     },
+  { value: 'proptech',      label: '🏠 PropTech'      },
+  { value: 'legaltech',     label: '⚖️ LegalTech'     },
+  { value: 'cybersecurity', label: '🔒 Cybersecurity' },
+  { value: 'gaming',        label: '🎮 Gaming'        },
+  { value: 'media',         label: '📱 Media'         },
+  { value: 'marketplace',   label: '🏪 Marketplace'   },
+  { value: 'hr-tech',       label: '👥 HR Tech'       },
+  { value: 'biotech',       label: '🧬 Biotech'       },
+  { value: 'construction',  label: '🏗️ Construction'  },
+];
 export default function EditStartup(): JSX.Element {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
@@ -31,7 +50,7 @@ export default function EditStartup(): JSX.Element {
   /* Step 1 */
   const [name, setName] = useState('');
   const [stage, setStage] = useState('idea');
-  const [industry, setIndustry] = useState('');
+const [industry, setIndustry] = useState<{ value: string; label: string } | null>(null);
   const [shortPitch, setShortPitch] = useState('');
   const [description, setDescription] = useState('');
 
@@ -66,7 +85,7 @@ export default function EditStartup(): JSX.Element {
       .then((data: any) => {
         setName(data.name || '');
         setStage(data.stage || 'idea');
-        setIndustry(data.industry || '');
+        setIndustry(INDUSTRIES.find(i => i.value === data.industry) ?? (data.industry ? { value: data.industry, label: data.industry } : null));
         setShortPitch(data.shortPitch || '');
         setDescription(data.description || '');
 
@@ -126,7 +145,7 @@ export default function EditStartup(): JSX.Element {
         ...(name ? { name: name.trim() } : {}),
         ...(currentUserId ? { founderId: String(currentUserId) } : {}),
         stage,
-        industry: industry.trim() || undefined,
+        industry: industry?.value || undefined,
         shortPitch: shortPitch.trim() || undefined,
         description: description.trim() || undefined,
         website: website.trim() || undefined,
@@ -236,10 +255,19 @@ export default function EditStartup(): JSX.Element {
               </div>
 
               <div className="cs-field">
-                <label className="cs-label">Отрасль</label>
-                <input className="cs-input" placeholder="Fintech, EdTech, HealthTech…" value={industry}
-                  onChange={e => setIndustry(e.target.value)} />
-              </div>
+  <label className="cs-label">Отрасль</label>
+  <Select
+    options={INDUSTRIES}
+    value={industry}
+    onChange={opt => setIndustry(opt)}
+    placeholder="Выберите отрасль…"
+    noOptionsMessage={() => 'Не найдено'}
+    menuPortalTarget={document.body}
+    menuPosition="fixed"
+    classNamePrefix="country-select"
+    isClearable
+  />
+</div>
 
               <div className="cs-field">
                 <label className="cs-label">Краткий питч <span className="cs-label-req">*</span></label>
@@ -419,7 +447,7 @@ export default function EditStartup(): JSX.Element {
                 <div className="cs-summary-block-title">Идентификация<button className="cs-edit-link" onClick={() => setStep(0)}>изменить</button></div>
                 <div className="cs-summary-row"><span className="cs-summary-key">Название</span><span className="cs-summary-val accent">{name || '—'}</span></div>
                 <div className="cs-summary-row"><span className="cs-summary-key">Стадия</span><span className="cs-summary-val">{stage}</span></div>
-                <div className="cs-summary-row"><span className="cs-summary-key">Отрасль</span><span className="cs-summary-val">{industry || '—'}</span></div>
+                <div className="cs-summary-row"><span className="cs-summary-key">Отрасль</span><span className="cs-summary-val">{industry?.label || '—'}</span></div>
                 <div className="cs-summary-row"><span className="cs-summary-key">Питч</span><span className="cs-summary-val">{shortPitch || '—'}</span></div>
               </div>
 
