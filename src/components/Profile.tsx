@@ -215,12 +215,12 @@ function StartupCard({ startup, offers, investments }: {
 
 /* ─── Main Component ─────────────────────────────────────────────── */
 export default function Profile() {
-  const { user: authUser, token, loading: authLoading } = useAuth();
+  const { user: authUser, token, loading: authLoading, updateUser } = useAuth();
   const [user, setUser]         = useState<ApiUser | null>(null);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
   const [investor, setInvestor] = useState<InvestorApi | null>(null);
-
+  
   // User profile editing state
   const [editingUser, setEditingUser]   = useState(false);
   const [userForm, setUserForm]         = useState<UserEditForm>({ name: '', company: '', bio: '', avatarUrl: '', phone: '', location: '' });
@@ -404,6 +404,20 @@ export default function Profile() {
         phone: updated.meta?.phone ?? updated.phone,
         location: updated.meta?.location ?? updated.location,
       });
+      if (updateUser) {
+        const authUpd = {
+        id: authUser?.id ?? user?.id ?? '',
+        email: authUser?.email ?? user?.email ?? '',
+        fullName: updated.name ?? updated.fullName ?? authUser?.fullName ?? '',
+        company: updated.company ?? authUser?.company ?? '',
+        bio: updated.bio ?? authUser?.bio ?? '',
+        avatarUrl: updated.avatarUrl ?? authUser?.avatarUrl ?? '',
+        phone: updated.meta?.phone ?? updated.phone ?? authUser?.phone ?? '',
+        location: updated.meta?.location ?? updated.location ?? authUser?.location ?? '',
+        role: authUser?.role ?? 'user',
+      };
+        updateUser(authUpd);
+      }
       setEditingUser(false);
     } catch (e: any) {
       setUserSaveError(e.message ?? 'Не удалось сохранить профиль');

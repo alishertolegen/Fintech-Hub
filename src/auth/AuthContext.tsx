@@ -17,6 +17,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
+  updateUser: (u: User | null) => void;
   login: (email: string, password: string) => Promise<void>;
   // Обновлено: добавлен последний необязательный параметр investorProfile
   register: (
@@ -42,7 +43,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-
+  const updateUser = (u: User | null) => {
+  setUser(u);
+  try {
+    if (u) localStorage.setItem('user', JSON.stringify(u));
+    else localStorage.removeItem('user');
+  } catch {}
+};
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
@@ -259,9 +266,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
-      {children}
-    </AuthContext.Provider>
+  <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateUser }}>
+    {children}
+  </AuthContext.Provider>
   );
 };
 
