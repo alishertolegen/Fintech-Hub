@@ -1,5 +1,5 @@
 // src/components/Profile.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Select from 'react-select';
 import {
   Mail, Phone, MapPin, Briefcase, Pencil, Check, X,
@@ -313,7 +313,38 @@ export default function Profile() {
   const [loadingStartups, setLoadingStartups]           = useState(false);
   const [founderOffers, setFounderOffers]               = useState<Offer[]>([]);
   const [founderInvestments, setFounderInvestments]     = useState<Investment[]>([]);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+const [avatarUploading, setAvatarUploading] = useState(false);
 
+async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  const file = e.target.files?.[0];
+  if (!file || !token) return;
+  setAvatarUploading(true);
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('http://localhost:8080/api/users/me/avatar', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.message ?? `Ошибка ${res.status}`);
+    }
+    const updated: ApiUser = await res.json();
+    setUser(prev => ({ ...prev, avatarUrl: updated.avatarUrl }));
+    setUserForm(f => ({ ...f, avatarUrl: updated.avatarUrl ?? '' }));
+    if (updateUser && authUser) {
+      updateUser({ ...authUser, avatarUrl: updated.avatarUrl ?? '' });
+    }
+  } catch (ex: any) {
+    alert('Не удалось загрузить аватар: ' + ex.message);
+  } finally {
+    setAvatarUploading(false);
+    if (avatarInputRef.current) avatarInputRef.current.value = '';
+  }
+}
   /* ── Load countries ── */
   useEffect(() => {
     setCountriesLoading(true);
@@ -649,15 +680,37 @@ export default function Profile() {
 
               {/* Avatar + name block */}
               <div className="pf-hero-avatar-block">
-                <div className="pf-avatar-ring">
-                  {displayAvatar
-                    ? <img src={displayAvatar} alt={displayName} />
-                    : <InitialsAvatar name={displayName} />
-                  }
-                  {investor?.isVerified && (
-                    <div className="pf-verified" title="Верифицирован"><Shield size={11} color="#051a0a" /></div>
-                  )}
-                </div>
+                <div className="pf-avatar-ring" style={{ position: 'relative' }}>
+  {displayAvatar
+    ? <img src={displayAvatar} alt={displayName} />
+    : <InitialsAvatar name={displayName} />
+  }
+  {investor?.isVerified && (
+    <div className="pf-verified" title="Верифицирован"><Shield size={11} color="#051a0a" /></div>
+  )}
+  <button
+    className="pf-avatar-upload-btn"
+    title="Загрузить фото"
+    disabled={avatarUploading}
+    onClick={() => avatarInputRef.current?.click()}
+    style={{
+      position: 'absolute', bottom: 2, right: 2,
+      width: 26, height: 26, borderRadius: '50%',
+      background: 'var(--accent)', border: '2px solid var(--bg-card)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      cursor: 'pointer', opacity: avatarUploading ? 0.5 : 1,
+    }}
+  >
+    {avatarUploading ? <div className="pf-spinner" style={{ width: 12, height: 12 }} /> : <Pencil size={11} color="#fff" />}
+  </button>
+  <input
+    ref={avatarInputRef}
+    type="file"
+    accept="image/*"
+    style={{ display: 'none' }}
+    onChange={handleAvatarUpload}
+  />
+</div>
                 <div className="pf-hero-name-block">
                   <h1 className="pf-name">{displayName}</h1>
                   {user.role && (
