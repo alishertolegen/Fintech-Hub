@@ -185,10 +185,12 @@ export default function CreateStartup(): JSX.Element {
       {/* ════ LEFT PANEL ════ */}
       <aside className="cs-left">
         <div className="cs-brand">
-          <div className="cs-logo">
-            <div className="cs-logo-icon">₸</div>
-            <span className="cs-logo-text">Fintech Hub</span>
-          </div>
+          <div className="cs-logo navbar-logo">
+  <div className="logo-mark">
+    <img src="/logo_fintech_transparent.png" alt="logo" />
+  </div>
+  <span className="logo-text">Fintech<em>Hub</em></span>
+</div>
 
           <div className="cs-headline">
             <div className="cs-headline-eyebrow">// новый стартап</div>

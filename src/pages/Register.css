@@ -683,3 +683,85 @@ body {
     gap: 20px;
   }
 }
+/* Required star */
+.required-star { color: #e53e3e; margin-left: 2px; }
+
+/* Field-level error text */
+.field-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #e53e3e;
+}
+
+/* Input states */
+.form-input.input-error  { border-color: #e53e3e; background: #a7763ead; }
+.form-input.input-valid  { border-color: #38a169; }
+
+/* Password wrapper */
+.input-wrapper { position: relative; display: flex; align-items: center; }
+.input-wrapper .form-input { flex: 1; padding-right: 40px; }
+.toggle-password {
+  position: absolute; right: 10px;
+  background: none; border: none; cursor: pointer;
+  font-size: 16px; padding: 0; line-height: 1;
+}
+
+/* Password hints */
+.password-hints {
+  margin: 6px 0 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.password-hints li { font-size: 11px; }
+.hint-ok  { color: #38a169; }
+.hint-ok::before  { content: '✓ '; }
+.hint-bad { color: #718096; }
+.hint-bad::before { content: '○ '; }
+
+.select-error .country-select__control {
+  border-color: #e53e3e !important;
+}
+
+.country-select__control {
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  min-height: 42px;
+}
+
+.country-select__control--is-focused {
+  border-color: #667eea !important;
+  box-shadow: 0 0 0 1px #667eea !important;
+}
+.country-select__menu {
+  z-index: 9999 !important;
+}
+
+.country-select__menu-portal {
+  z-index: 9999 !important;
+}
+.country-select__option {
+  color: #1a202c !important;
+  background-color: #ffffff;
+}
+
+.country-select__option--is-focused {
+  background-color: #ebf4ff !important;
+  color: #1a202c !important;
+}
+
+.country-select__option--is-selected {
+  background-color: #667eea !important;
+  color: #ffffff !important;
+}
+
+.country-select__single-value {
+  color: #1a202c !important;
+}
+
+.country-select__input {
+  color: #1a202c !important;
+}

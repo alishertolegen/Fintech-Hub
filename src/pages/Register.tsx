@@ -1,20 +1,83 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import './Register.css';
+import Select from 'react-select';
 
+// Типы для react-select
+interface CountryOption {
+  value: string;
+  label: string;
+}
+// ── Validation helpers ──────────────────────────────────────────────────────
+const validateFullName = (v: string) => {
+  if (!v.trim()) return 'Аты-жөні міндетті өріс.';
+  if (v.trim().length < 2) return 'Аты-жөні кемінде 2 таңбадан тұруы керек.';
+  if (!/^[\p{L}\s'-]+$/u.test(v.trim())) return 'Аты-жөні тек әріптерден тұруы керек.';
+  return '';
+};
+
+const validateEmail = (v: string) => {
+  if (!v.trim()) return 'Email міндетті өріс.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Email форматы дұрыс емес.';
+  return '';
+};
+
+const validatePassword = (v: string) => {
+  if (!v) return 'Құпия сөз міндетті өріс.';
+  if (v.length < 8) return 'Құпия сөз кемінде 8 таңбадан тұруы керек.';
+  if (!/[A-Z]/.test(v)) return 'Кемінде бір бас әріп болуы керек (A-Z).';
+  if (!/[a-z]/.test(v)) return 'Кемінде бір кіші әріп болуы керек (a-z).';
+  if (!/[0-9]/.test(v)) return 'Кемінде бір сан болуы керек.';
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(v))
+    return 'Кемінде бір арнайы таңба болуы керек (!@#$ және т.б.).';
+  return '';
+};
+
+const validatePhone = (v: string) => {
+  if (!v.trim()) return 'Телефон міндетті өріс.';
+  // Accepts: +7XXXXXXXXXX, 8XXXXXXXXXX, with optional spaces/dashes/parens
+  if (!/^(\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}$/.test(v.trim()))
+    return 'Телефон форматы дұрыс емес. Мысалы: +7 (777) 123-45-67';
+  return '';
+};
+
+const validateLocation = (v: CountryOption | null) => {
+  if (!v) return 'Орналасқан жер міндетті өріс.';
+  return '';
+};
+
+const validateLegalName = (v: string) => {
+  if (!v.trim()) return 'Инвестор үшін заңдық атауы міндетті өріс.';
+  return '';
+};
+
+// ── Types ───────────────────────────────────────────────────────────────────
+interface FormErrors {
+  fullName: string;
+  email: string;
+  password: string;
+  phone: string;
+  location: string;
+  legalName: string;
+}
+
+// ── Component ───────────────────────────────────────────────────────────────
 export default function RegisterPage() {
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [company, setCompany]   = useState('');
-  const [phone, setPhone]       = useState('');
-  const [location, setLocation] = useState('');
-  const [bio, setBio]           = useState('');
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [fullName, setFullName]   = useState('');
+  const [company, setCompany]     = useState('');
+  const [phone, setPhone]         = useState('');
+const [location, setLocation] = useState<CountryOption | null>(null);
+const [countries, setCountries] = useState<CountryOption[]>([]);
+const [countriesLoading, setCountriesLoading] = useState(false);
+  const [bio, setBio]             = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [role, setRole]         = useState('founder');
-  const [error, setError]       = useState<string | null>(null);
-  const [loading, setLoading]   = useState(false);
+  const [role, setRole]           = useState('founder');
+  const [error, setError]         = useState<string | null>(null);
+  const [loading, setLoading]     = useState(false);
 
   // investor-specific
   const [legalName, setLegalName]       = useState('');
@@ -25,14 +88,73 @@ export default function RegisterPage() {
   const [stages, setStages]             = useState('');
   const [website, setWebsite]           = useState('');
 
+  // Field-level errors
+  const [fieldErrors, setFieldErrors] = useState<FormErrors>({
+    fullName: '', email: '', password: '', phone: '', location: '', legalName: '',
+  });
+  // Track touched fields to show errors only after interaction
+  const [touched, setTouched] = useState<Partial<Record<keyof FormErrors, boolean>>>({});
+
+  useEffect(() => {
+  setCountriesLoading(true);
+  fetch('https://restcountries.com/v3.1/all?fields=name,cca2')
+    .then(r => r.json())
+    .then((data: any[]) => {
+      const opts = data
+        .map(c => ({ value: c.cca2, label: c.name.common }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+      setCountries(opts);
+    })
+    .finally(() => setCountriesLoading(false));
+}, []);
+
   const { register } = useAuth();
   const nav = useNavigate();
 
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const touch = (field: keyof FormErrors) =>
+    setTouched(prev => ({ ...prev, [field]: true }));
+
+  const updateError = (field: keyof FormErrors, msg: string) =>
+    setFieldErrors(prev => ({ ...prev, [field]: msg }));
+
+  const getFieldClass = (field: keyof FormErrors) =>
+    `form-input${touched[field] && fieldErrors[field] ? ' input-error' : touched[field] && !fieldErrors[field] ? ' input-valid' : ''}`;
+
+  // Phone auto-formatting
+  const handlePhoneChange = (raw: string) => {
+    // Strip everything except digits and leading +
+    let digits = raw.replace(/[^\d+]/g, '');
+    setPhone(raw); // keep raw for display; validate separately
+    updateError('phone', validatePhone(raw));
+  };
+
+  // ── Validate all required fields before submit ─────────────────────────────
+  const validateAll = (): boolean => {
+    const errors: FormErrors = {
+      fullName: validateFullName(fullName),
+      email:    validateEmail(email),
+      password: validatePassword(password),
+      phone:    validatePhone(phone),
+      location: validateLocation(location),
+      legalName: role === 'investor' ? validateLegalName(legalName) : '',
+    };
+    setFieldErrors(errors);
+    setTouched({ fullName: true, email: true, password: true, phone: true, location: true, legalName: true });
+    return Object.values(errors).every(e => e === '');
+  };
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
+    if (!validateAll()) {
+      setError('Барлық міндетті өрістерді дұрыс толтырыңыз.');
+      return;
+    }
+
+    setLoading(true);
     try {
       const investorProfile =
         role === 'investor'
@@ -47,36 +169,33 @@ export default function RegisterPage() {
             }
           : undefined;
 
-      await register(email, password, fullName, company, phone, location, bio, avatarUrl, role, investorProfile);
+      await register(email, password, fullName, company, phone, location?.label ?? '', bio, avatarUrl, role, investorProfile);
       nav('/');
     } catch (err: any) {
       console.error('Register error:', err);
-
       let userMessage: string | null = null;
       const resp = err?.response;
 
-      if (resp && resp.data) {
+      if (resp?.data) {
         const data = resp.data;
-        if (typeof data.message === 'string' && data.message.trim()) {
-          userMessage = data.message;
-        } else if (typeof data.error === 'string' && data.error.trim()) {
-          userMessage = data.error;
-        } else if (data.code) {
-          switch (data.code) {
-            case 'EMAIL_EXISTS':   userMessage = 'Бұл email бұрыннан тіркелген.'; break;
-            case 'INVALID_EMAIL':  userMessage = 'Электрондық пошта форматы дұрыс емес.'; break;
-            case 'WEAK_PASSWORD':  userMessage = 'Құпия сөз тым әлсіз (кемінде 8 таңба).'; break;
-            case 'BAD_REQUEST':    userMessage = 'Қате сұраныс. Барлық міндетті өрістерді толтырыңыз.'; break;
-            case 'SERVER_ERROR':   userMessage = 'Серверде қате. Кейінірек қайталап көріңіз.'; break;
-            default:               userMessage = data.code || 'Тіркелу қатесі';
-          }
+        if (typeof data.message === 'string' && data.message.trim()) userMessage = data.message;
+        else if (typeof data.error === 'string' && data.error.trim()) userMessage = data.error;
+        else if (data.code) {
+          const map: Record<string, string> = {
+            EMAIL_EXISTS:  'Бұл email бұрыннан тіркелген.',
+            INVALID_EMAIL: 'Электрондық пошта форматы дұрыс емес.',
+            WEAK_PASSWORD: 'Құпия сөз тым әлсіз (кемінде 8 таңба).',
+            BAD_REQUEST:   'Қате сұраныс. Барлық міндетті өрістерді толтырыңыз.',
+            SERVER_ERROR:  'Серверде қате. Кейінірек қайталап көріңіз.',
+          };
+          userMessage = map[data.code] ?? data.code ?? 'Тіркелу қатесі';
         } else {
-          const status = resp.status;
-          if (status === 400)      userMessage = 'Қате сұраныс. Деректерді тексеріңіз.';
-          else if (status === 401) userMessage = 'Рұқсат беру қатесі.';
-          else if (status === 409) userMessage = 'Бұл email бұрыннан тіркелген.';
-          else if (status >= 500)  userMessage = 'Сервер ішінде қате. Кейінірек қайталап көріңіз.';
-          else                     userMessage = 'Белгісіз қате орын алды.';
+          const s = resp.status;
+          if (s === 400) userMessage = 'Қате сұраныс. Деректерді тексеріңіз.';
+          else if (s === 401) userMessage = 'Рұқсат беру қатесі.';
+          else if (s === 409) userMessage = 'Бұл email бұрыннан тіркелген.';
+          else if (s >= 500) userMessage = 'Сервер ішінде қате. Кейінірек қайталап көріңіз.';
+          else userMessage = 'Белгісіз қате орын алды.';
         }
       } else if (err?.message) {
         userMessage = err.message.toLowerCase().includes('network')
@@ -92,6 +211,9 @@ export default function RegisterPage() {
     }
   };
 
+  // ── Render ─────────────────────────────────────────────────────────────────
+  const fe = fieldErrors;
+
   return (
     <div className="register-container">
 
@@ -101,35 +223,22 @@ export default function RegisterPage() {
           <div className="left-logo-mark" />
           <span className="left-logo-text">FINTECH HUB</span>
         </div>
-
         <div className="left-headline">
           <div className="left-headline-line"><span>BUILD</span></div>
           <div className="left-headline-line"><span>BOLD</span></div>
           <div className="left-headline-line"><span>SCALE</span></div>
           <div className="left-divider" />
           <p className="left-tagline">
-            Қазақстандағы стартаптар<br />
-            мен инвесторлар платформасы
+            Қазақстандағы стартаптар<br />мен инвесторлар платформасы
           </p>
         </div>
-
         <div className="left-stats">
-          <div className="left-stat-item">
-            <div className="left-stat-num">340+</div>
-            <div className="left-stat-label">Стартаптар</div>
-          </div>
-          <div className="left-stat-item">
-            <div className="left-stat-num">120+</div>
-            <div className="left-stat-label">Инвесторлар</div>
-          </div>
-          <div className="left-stat-item">
-            <div className="left-stat-num">$4M+</div>
-            <div className="left-stat-label">Инвестиция</div>
-          </div>
+          <div className="left-stat-item"><div className="left-stat-num">340+</div><div className="left-stat-label">Стартаптар</div></div>
+          <div className="left-stat-item"><div className="left-stat-num">120+</div><div className="left-stat-label">Инвесторлар</div></div>
+          <div className="left-stat-item"><div className="left-stat-num">$4M+</div><div className="left-stat-label">Инвестиция</div></div>
         </div>
       </aside>
 
-      {/* Floating geometric decorations */}
       <div className="left-geo left-geo-1" />
       <div className="left-geo left-geo-2" />
       <div className="left-geo left-geo-3" />
@@ -141,49 +250,79 @@ export default function RegisterPage() {
           <p className="register-subtitle">Жаңа аккаунт жасаңыз</p>
         </div>
 
-        <form
-          onSubmit={submit}
-          className={`register-form ${role === 'investor' ? 'investor-layout' : ''}`}
-        >
+        <form onSubmit={submit} noValidate className={`register-form ${role === 'investor' ? 'investor-layout' : ''}`}>
 
-          {/* Block 1 — Core credentials */}
+          {/* ── Block 1: Core credentials ── */}
           <div className="form-row">
+            {/* Full name */}
             <div className="form-group">
-              <label className="form-label">Аты-жөні</label>
+              <label className="form-label">
+                Аты-жөні <span className="required-star">*</span>
+              </label>
               <input
-                className="form-input"
+                className={getFieldClass('fullName')}
                 value={fullName}
-                onChange={e => setFullName(e.target.value)}
-                required
+                onChange={e => { setFullName(e.target.value); updateError('fullName', validateFullName(e.target.value)); }}
+                onBlur={() => { touch('fullName'); updateError('fullName', validateFullName(fullName)); }}
                 placeholder="Іван Іванов"
               />
+              {touched.fullName && fe.fullName && <span className="field-error">{fe.fullName}</span>}
             </div>
+
+            {/* Email */}
             <div className="form-group">
-              <label className="form-label">Email</label>
+              <label className="form-label">
+                Email <span className="required-star">*</span>
+              </label>
               <input
-                className="form-input"
+                className={getFieldClass('email')}
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => { setEmail(e.target.value); updateError('email', validateEmail(e.target.value)); }}
+                onBlur={() => { touch('email'); updateError('email', validateEmail(email)); }}
                 type="email"
-                required
                 placeholder="you@example.com"
               />
+              {touched.email && fe.email && <span className="field-error">{fe.email}</span>}
             </div>
           </div>
 
+          {/* Password */}
           <div className="form-group">
-            <label className="form-label">Құпия сөз</label>
-            <input
-              className="form-input"
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-            />
+            <label className="form-label">
+              Құпия сөз <span className="required-star">*</span>
+            </label>
+            <div className="input-wrapper">
+              <input
+                className={getFieldClass('password')}
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => { setPassword(e.target.value); updateError('password', validatePassword(e.target.value)); }}
+                onBlur={() => { touch('password'); updateError('password', validatePassword(password)); }}
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                className="toggle-password"
+                onClick={() => setShowPassword(p => !p)}
+                tabIndex={-1}
+              >
+                {showPassword ? '🙈' : '👁️'}
+              </button>
+            </div>
+            {touched.password && fe.password && <span className="field-error">{fe.password}</span>}
+            {/* Password strength hints */}
+            {password && (
+              <ul className="password-hints">
+                <li className={password.length >= 8 ? 'hint-ok' : 'hint-bad'}>Кемінде 8 таңба</li>
+                <li className={/[A-Z]/.test(password) ? 'hint-ok' : 'hint-bad'}>Бас әріп (A-Z)</li>
+                <li className={/[a-z]/.test(password) ? 'hint-ok' : 'hint-bad'}>Кіші әріп (a-z)</li>
+                <li className={/[0-9]/.test(password) ? 'hint-ok' : 'hint-bad'}>Сан (0-9)</li>
+                <li className={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password) ? 'hint-ok' : 'hint-bad'}>Арнайы таңба (!@#$ …)</li>
+              </ul>
+            )}
           </div>
 
-          {/* Block 2 — Role toggle */}
+          {/* ── Block 2: Role toggle ── */}
           <div className="form-group">
             <label className="form-label">Рөлі</label>
             <div className="role-selector">
@@ -200,27 +339,59 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Block 3 — Profile + optional investor */}
+          {/* ── Block 3: Profile + optional investor ── */}
           <div className="form-content-split">
 
             <div className="common-fields">
               <h3 className="section-title">Профиль</h3>
 
               <div className="form-row">
+                {/* Company (optional) */}
                 <div className="form-group">
                   <label className="form-label optional">Компания</label>
                   <input className="form-input" value={company} onChange={e => setCompany(e.target.value)} placeholder="Компания атауы" />
                 </div>
+
+                {/* Phone (required) */}
                 <div className="form-group">
-                  <label className="form-label optional">Телефон</label>
-                  <input className="form-input" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7 (___) ___-__-__" />
+                  <label className="form-label">
+                    Телефон <span className="required-star">*</span>
+                  </label>
+                  <input
+                    className={getFieldClass('phone')}
+                    value={phone}
+                    onChange={e => { setPhone(e.target.value); updateError('phone', validatePhone(e.target.value)); }}
+                    onBlur={() => { touch('phone'); updateError('phone', validatePhone(phone)); }}
+                    placeholder="+7 (777) 123-45-67"
+                  />
+                  {touched.phone && fe.phone && <span className="field-error">{fe.phone}</span>}
                 </div>
               </div>
 
+              {/* Location (required) */}
               <div className="form-group">
-                <label className="form-label optional">Орналасқан жер</label>
-                <input className="form-input" value={location} onChange={e => setLocation(e.target.value)} placeholder="Алматы, Қазақстан" />
-              </div>
+  <label className="form-label">
+    Орналасқан жер <span className="required-star">*</span>
+  </label>
+  <Select
+  options={countries}
+  menuPortalTarget={document.body}
+  menuPosition="fixed"
+    value={location}
+    onChange={(opt) => {
+      setLocation(opt);
+      updateError('location', validateLocation(opt));
+    }}
+    onBlur={() => { touch('location'); updateError('location', validateLocation(location)); }}
+    isLoading={countriesLoading}
+    placeholder="Елді таңдаңыз..."
+    noOptionsMessage={() => 'Табылмады'}
+    loadingMessage={() => 'Жүктелуде...'}
+    classNamePrefix="country-select"
+    className={touched.location && fe.location ? 'select-error' : ''}
+  />
+  {touched.location && fe.location && <span className="field-error">{fe.location}</span>}
+</div>
 
               <div className="form-group">
                 <label className="form-label optional">Био</label>
@@ -233,13 +404,24 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* ── Investor section ── */}
             {role === 'investor' && (
               <div className="investor-section">
                 <h3 className="investor-section-title">Инвестор профилі</h3>
 
+                {/* Legal name (required for investor) */}
                 <div className="form-group">
-                  <label className="form-label optional">Заңдық атауы</label>
-                  <input className="form-input" value={legalName} onChange={e => setLegalName(e.target.value)} placeholder="Компания заңдық атауы" />
+                  <label className="form-label">
+                    Заңдық атауы <span className="required-star">*</span>
+                  </label>
+                  <input
+                    className={getFieldClass('legalName')}
+                    value={legalName}
+                    onChange={e => { setLegalName(e.target.value); updateError('legalName', validateLegalName(e.target.value)); }}
+                    onBlur={() => { touch('legalName'); updateError('legalName', validateLegalName(legalName)); }}
+                    placeholder="Компания заңдық атауы"
+                  />
+                  {touched.legalName && fe.legalName && <span className="field-error">{fe.legalName}</span>}
                 </div>
 
                 <div className="form-group">
@@ -258,7 +440,7 @@ export default function RegisterPage() {
                       className="form-input"
                       value={minCheck}
                       onChange={e => setMinCheck(e.target.value === '' ? '' : Number(e.target.value))}
-                      type="number"
+                      type="number" min={0}
                       placeholder="10 000"
                     />
                   </div>
@@ -268,7 +450,7 @@ export default function RegisterPage() {
                       className="form-input"
                       value={maxCheck}
                       onChange={e => setMaxCheck(e.target.value === '' ? '' : Number(e.target.value))}
-                      type="number"
+                      type="number" min={0}
                       placeholder="500 000"
                     />
                   </div>
@@ -290,17 +472,14 @@ export default function RegisterPage() {
                 </div>
               </div>
             )}
-
           </div>
 
-          {/* Error */}
+          {/* ── Global error ── */}
           {error && (
-            <div role="alert" className="error-message">
-              {error}
-            </div>
+            <div role="alert" className="error-message">{error}</div>
           )}
 
-          {/* Actions */}
+          {/* ── Actions ── */}
           <div className="form-actions">
             <button
               type="submit"
@@ -309,7 +488,6 @@ export default function RegisterPage() {
             >
               {loading ? 'Жүктелуде...' : 'Тіркелу'}
             </button>
-
             <div className="login-link-container">
               <span className="login-link-text">Аккаунт бар ма?</span>
               <Link to="/login" className="login-link">Кіру</Link>
