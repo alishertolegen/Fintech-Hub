@@ -1,5 +1,5 @@
 // src/pages/CreateStartup.tsx
-import React, { JSX, useState } from 'react';
+import React, { JSX, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Check, Globe, Image as ImageIcon, BarChart2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
@@ -45,7 +45,7 @@ const INDUSTRIES = [
 ];
 export default function CreateStartup(): JSX.Element {
   const nav = useNavigate();
-  const { user } = useAuth() as any;
+  const { user, token } = useAuth() as any;
   const currentUserId = user?.id ?? user?._id ?? user?.sub ?? undefined;
 
   const [step, setStep] = useState(0);
@@ -60,6 +60,8 @@ const [industry, setIndustry] = useState<{ value: string; label: string } | null
   /* ── Step 2: Details ── */
   const [website,         setWebsite]         = useState('');
   const [logoUrl,         setLogoUrl]         = useState('');
+  const logoInputRef = useRef<HTMLInputElement>(null);
+const [logoUploading, setLogoUploading] = useState(false);
   const [attachmentsText, setAttachmentsText] = useState('');
   const [visibility,      setVisibility]      = useState('public');
   const [valuationMode,   setValuationMode]   = useState<'pre' | 'post'>('pre');
@@ -85,6 +87,31 @@ const [industry, setIndustry] = useState<{ value: string; label: string } | null
   function parseAttachments(t: string): string[] {
     return t ? t.split(/[\n,]+/).map(s => s.trim()).filter(Boolean) : [];
   }
+
+async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  setLogoUploading(true);
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('http://localhost:8080/api/users/me/avatar', {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+    if (!res.ok) throw new Error(`Ошибка ${res.status}`);
+    const data = await res.json();
+    setLogoUrl(data.avatarUrl ?? '');
+  } catch (ex: any) {
+    setError('Не удалось загрузить логотип: ' + ex.message);
+  } finally {
+    setLogoUploading(false);
+    if (logoInputRef.current) logoInputRef.current.value = '';
+  }
+}
 
   /* Validation per step */
   function validateStep(s: number): string | null {
@@ -344,12 +371,36 @@ const [industry, setIndustry] = useState<{ value: string; label: string } | null
               <div className="cs-field">
                 <label className="cs-label"><ImageIcon size={12} style={{display:'inline'}} /> Logo URL</label>
                 <div className="cs-logo-row">
-                  <input className="cs-input" placeholder="https://cdn.example.com/logo.png" value={logoUrl}
-                    onChange={e => setLogoUrl(e.target.value)} />
-                  <div className="cs-logo-thumb">
-                    {logoUrl ? <img src={logoUrl} alt="preview" /> : <ImageIcon size={18} />}
-                  </div>
-                </div>
+  <input className="cs-input" placeholder="https://cdn.example.com/logo.png" value={logoUrl}
+    onChange={e => setLogoUrl(e.target.value)} />
+  <div
+    className="cs-logo-thumb"
+    style={{ position: 'relative', cursor: 'pointer' }}
+    onClick={() => logoInputRef.current?.click()}
+    title="Загрузить логотип"
+  >
+    {logoUploading
+      ? <div style={{ width: 18, height: 18, border: '2px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      : logoUrl
+        ? <img src={logoUrl} alt="preview" />
+        : <ImageIcon size={18} />
+    }
+    <div style={{
+      position: 'absolute', bottom: 0, right: 0,
+      background: 'var(--accent)', borderRadius: '50%',
+      width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <ImageIcon size={9} color="#fff" />
+    </div>
+  </div>
+  <input
+    ref={logoInputRef}
+    type="file"
+    accept="image/*"
+    style={{ display: 'none' }}
+    onChange={handleLogoUpload}
+  />
+</div>
               </div>
 
               <div className="cs-field">
