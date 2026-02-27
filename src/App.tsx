@@ -16,11 +16,17 @@ import MyInvestmentsPage from './pages/MyInvestmentsPage';
 import Footer from './components/Footer';
 import './App.css';
 import UserProfile from './components/UserProfile';
+import ForgotPassword from './components/ForgotPassword';
+import ResetPassword  from './components/ResetPassword';
+
 function App() {
   const location = useLocation();
 
   const isAuthPage =
-    location.pathname === '/login' || location.pathname === '/register';
+  location.pathname === '/login'           ||
+  location.pathname === '/register'        ||
+  location.pathname === '/forgot-password' ||
+  location.pathname === '/reset-password';
 
   return (
     <div className="app-container">
@@ -28,10 +34,11 @@ function App() {
 
       {isAuthPage ? (
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          {/* если пользователь попал на любой другой путь в режиме auth — редиректим на /login */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="/login"            element={<Login />} />
+<Route path="/register"         element={<Register />} />
+<Route path="/forgot-password"  element={<ForgotPassword />} />
+<Route path="/reset-password"   element={<ResetPassword />} />
+<Route path="*"                 element={<Navigate to="/login" replace />} />
         </Routes>
       ) : (
         <main className="main-content">

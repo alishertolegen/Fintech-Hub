@@ -6,7 +6,7 @@ import {
   Globe, TrendingUp, Layers, Shield, DollarSign,
   Activity, PieChart, ArrowUpRight, Clock, Zap, Target, BarChart2,
   Rocket, FileText, Users, ChevronDown, ChevronUp, ExternalLink,
-  Flame, Eye, Tag, User
+  Flame, Eye, Tag, User, Lock
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import './Profile.css';
@@ -315,7 +315,9 @@ export default function Profile() {
   const [founderInvestments, setFounderInvestments]     = useState<Investment[]>([]);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 const [avatarUploading, setAvatarUploading] = useState(false);
-
+  const [showResetModal, setShowResetModal] = useState(false);
+const [resetSent, setResetSent]           = useState(false);
+const [resetLoading, setResetLoading]     = useState(false);
 async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
   const file = e.target.files?.[0];
   if (!file || !token) return;
@@ -343,6 +345,20 @@ async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
   } finally {
     setAvatarUploading(false);
     if (avatarInputRef.current) avatarInputRef.current.value = '';
+  }
+}
+async function handlePasswordReset() {
+  if (!user?.email) return;
+  setResetLoading(true);
+  try {
+    await fetch('http://localhost:8080/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: user.email }),
+    });
+    setResetSent(true);
+  } finally {
+    setResetLoading(false);
   }
 }
   /* ── Load countries ── */
@@ -860,18 +876,89 @@ async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
               )}
 
               {/* Actions */}
-              {!editingUser && !editingInvestor && (
-                <div className="pf-hero-actions">
-                  <button className="pf-btn pf-btn-primary pf-btn-full" onClick={() => setEditingUser(true)}>
-                    <User size={12} /> Редактировать профиль
-                  </button>
-                  {isInvestor && (
-                    <button className="pf-btn pf-btn-secondary pf-btn-full" onClick={() => setEditingInvestor(true)} style={{ marginTop: 8 }}>
-                      <Pencil size={12} /> Профиль инвестора
-                    </button>
-                  )}
-                </div>
-              )}
+{!editingUser && !editingInvestor && (
+  <div className="pf-hero-actions">
+    <button className="pf-btn pf-btn-primary pf-btn-full" onClick={() => setEditingUser(true)}>
+      <User size={12} /> Редактировать профиль
+    </button>
+    {isInvestor && (
+      <button className="pf-btn pf-btn-secondary pf-btn-full" onClick={() => setEditingInvestor(true)} style={{ marginTop: 8 }}>
+        <Pencil size={12} /> Профиль инвестора
+      </button>
+    )}
+    <button
+      className="pf-btn pf-btn-secondary pf-btn-full"
+      style={{ marginTop: 8, opacity: 0.75 }}
+      onClick={() => { setShowResetModal(true); setResetSent(false); }}
+    >
+      <Lock size={12} /> Сбросить пароль
+    </button>
+  </div>
+)}
+
+{/* Reset password modal */}
+{showResetModal && (
+  <div
+    style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}
+    onClick={() => setShowResetModal(false)}
+  >
+    <div
+      style={{
+        background: 'var(--bg-card)', border: '1px solid var(--border)',
+        borderRadius: 16, padding: '28px 28px 24px', maxWidth: 380, width: '90%',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+      }}
+      onClick={e => e.stopPropagation()}
+    >
+      {!resetSent ? (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <Lock size={16} color="var(--accent)" />
+            <h3 style={{ margin: 0, fontSize: 16 }}>Сброс пароля</h3>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 20 }}>
+            Письмо со ссылкой для сброса пароля будет отправлено на<br />
+            <strong style={{ color: 'var(--text-primary)' }}>{user?.email}</strong>
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="pf-btn pf-btn-secondary"
+              style={{ flex: 1 }}
+              onClick={() => setShowResetModal(false)}
+              disabled={resetLoading}
+            >
+              Отмена
+            </button>
+            <button
+              className="pf-btn pf-btn-primary"
+              style={{ flex: 1 }}
+              onClick={handlePasswordReset}
+              disabled={resetLoading}
+            >
+              {resetLoading ? 'Отправка…' : 'Отправить'}
+            </button>
+          </div>
+        </>
+      ) : (
+        <div style={{ textAlign: 'center', padding: '8px 0' }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>📬</div>
+          <h3 style={{ margin: '0 0 8px' }}>Письмо отправлено!</h3>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 20 }}>
+            Проверьте почту <strong style={{ color: 'var(--text-primary)' }}>{user?.email}</strong>.
+            Ссылка действительна 30 минут.
+          </p>
+          <button className="pf-btn pf-btn-secondary pf-btn-full" onClick={() => setShowResetModal(false)}>
+            Закрыть
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
             </div>
           </div>{/* end hero */}
