@@ -106,6 +106,7 @@ export default function CreateStartup(): JSX.Element {
       metricsSnapshot: withMetric ? {
         mrr:   Number(metricMrr),
         users: Number(metricActiveUsers),
+        burnRate: metricBurnRate !== '' ? Number(metricBurnRate) : undefined,
         ...(valuationMode === 'pre'  && metricValuationPre  !== '' ? { valuationPreMoney:  Number(metricValuationPre)  } : {}),
         ...(valuationMode === 'post' && metricValuationPost !== '' ? { valuationPostMoney: Number(metricValuationPost) } : {}),
       } : { mrr: 0, users: 0 },

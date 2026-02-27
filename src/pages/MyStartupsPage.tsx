@@ -46,9 +46,11 @@ type SortKey = 'newest' | 'oldest' | 'mrr' | 'users' | 'valuation';
 const STAGES = [
   { value: 'all',        label: 'Все' },
   { value: 'idea',       label: 'Idea' },
-  { value: 'incubation', label: 'Incubation' },
+  { value: 'pre-seed', label: 'Pre-Seed' },
   { value: 'seed',       label: 'Seed' },
+  { value: 'series-a',     label: 'Series-A'},
   { value: 'growth',     label: 'Growth' },
+  { value: 'mature',     label: 'Mature' },
 ];
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [

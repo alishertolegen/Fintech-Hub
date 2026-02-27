@@ -46,9 +46,11 @@ type MrrRange = 'all' | '0' | '1k' | '10k' | '100k';
 const STAGES = [
   { value: 'all',        label: 'Все' },
   { value: 'idea',       label: 'Idea' },
-  { value: 'incubation', label: 'Incubation' },
+  { value: 'pre-seed', label: 'Pre-Seed' },
   { value: 'seed',       label: 'Seed' },
+  { value: 'series-a',     label: 'Series-A'},
   { value: 'growth',     label: 'Growth' },
+  { value: 'mature',     label: 'Mature' },
 ];
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -225,7 +227,7 @@ export default function StartupsList(): JSX.Element {
 
       {/* ═══ PAGE TITLE ═══ */}
       <div className="startups-page-title">
-        <h1>Стартаптар</h1>
+        <h1>Стартапы</h1>
         <p className="startups-subtitle">Профили стартапов — основная коллекция</p>
       </div>
 
@@ -271,7 +273,7 @@ export default function StartupsList(): JSX.Element {
 
           <div className="sidebar-divider" />
 
-          {/* Visibility */}
+          {/* Visibility
           <span className="sidebar-section-label">Видимость</span>
           <div className="sidebar-btn-group">
             {(['all', 'public', 'private'] as VisibilityFilter[]).map((v) => (
@@ -285,7 +287,7 @@ export default function StartupsList(): JSX.Element {
             ))}
           </div>
 
-          <div className="sidebar-divider" />
+          <div className="sidebar-divider" /> */}
 
           {/* MRR Range */}
           <span className="sidebar-section-label">MRR</span>

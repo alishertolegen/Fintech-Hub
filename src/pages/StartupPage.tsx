@@ -116,6 +116,48 @@ export default function StartupPage(): JSX.Element {
   const [offerVisibility, setOfferVisibility] = useState<'private'|'public'>('private');
   const [offerSubmitting, setOfferSubmitting] = useState(false);
 
+  const [founderPhone, setFounderPhone] = useState<string|null>(null);
+const [showPhone, setShowPhone] = useState(false);
+const [phoneLoading, setPhoneLoading] = useState(false);
+
+const maskPhone = (p?: string|null) => {
+  if (!p) return '—';
+  // заменяем все символы кроме последних 4 на звёздочки
+  return p.replace(/.(?=.{4})/g, '*');
+};
+  const loadFounderPhone = async (force = false) => {
+  const id = founder?.id ?? startup?.founderId;
+  if (!id) return;
+  // если уже есть телефон и не принудительно — просто показать
+  if (founderPhone && !force) { setShowPhone(true); return; }
+
+  if (!token) {
+    // нет токена — можно перенаправить на логин или показать уведомление
+    // тут просто alert + возврат
+    alert('Войдите в аккаунт, чтобы увидеть номер телефона');
+    return;
+  }
+
+  setPhoneLoading(true);
+  try {
+    const res = await fetch(`${USERS_API}/${encodeURIComponent(String(id))}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) {
+      // попытка прочитать тело ошибки, но не критично
+      const t = await res.text().catch(()=>null);
+      throw new Error(t || `Ошибка ${res.status}`);
+    }
+    const data = await res.json();
+    const phone = data?.meta?.phone ?? null;
+    setFounderPhone(phone);
+    setShowPhone(true);
+  } catch (e:any) {
+    alert('Не удалось получить телефон: ' + (e.message ?? e));
+  } finally {
+    setPhoneLoading(false);
+  }
+};
   const loadInvestor = async (id: string) => {
     if (investors[id]) return;
     try {
@@ -370,13 +412,44 @@ export default function StartupPage(): JSX.Element {
               </div>
             </div>
 
-            {/* Founder */}
-            {startup.founderId && !founderLoading && !founderError && founder && (
-              <div className="sp-hero-people">
-                <div className="sp-people-label">Основатель</div>
-                <FounderChip user={founder} onClick={()=>navigate(`/users/${encodeURIComponent(String(founder.id??founder._id??startup.founderId))}`)} />
-              </div>
-            )}
+            {/* Founder */ }
+{startup.founderId && !founderLoading && !founderError && founder && (
+  <div className="sp-hero-people">
+    <div className="sp-people-label">Основатель</div>
+    <FounderChip user={founder} onClick={()=>navigate(`/users/${encodeURIComponent(String(founder.id??founder._id??startup.founderId))}`)} />
+
+    {/* phone row */}
+    <div className="sp-founder-phone" style={{marginTop:8, display:'flex', gap:8, alignItems:'center'}}>
+      <div style={{fontSize:12, color:'var(--text-muted)'}}>Телефон</div>
+
+      <div style={{fontWeight:600, fontSize:15}}>
+        { showPhone
+            ? (phoneLoading ? 'Загрузка…' : (founderPhone ?? 'Не указан'))
+            : ( (founder as any)?.meta?.phone ? maskPhone((founder as any).meta.phone) : '—' )
+        }
+      </div>
+
+      <div style={{marginLeft:'auto'}}>
+        <button
+          className="sp-btn sp-btn-ghost" style={{fontSize:13}}
+          onClick={() => {
+            if (showPhone) { setShowPhone(false); return; }
+            // если уже в объекте founder есть телефон — просто показываем без запроса
+            if ((founder as any)?.meta?.phone) {
+              setFounderPhone((founder as any).meta.phone);
+              setShowPhone(true);
+              return;
+            }
+            // иначе запросим телефон с авторизацией
+            loadFounderPhone();
+          }}
+        >
+          {showPhone ? 'Скрыть' : 'Показать'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
             {/* Website */}
             {startup.website && (() => { try { return (
@@ -622,7 +695,7 @@ export default function StartupPage(): JSX.Element {
                 {investments.map((inv,i)=>(
                   <div key={inv._id??inv.id??i} className="sp-invest-row">
                     <div className="sp-invest-amount">{fmt(inv.amount)}</div>
-                    <div className="sp-invest-equity">{inv.equityPercent??'—'}% equity</div>
+                    <div className="sp-invest-equity">{inv.equityPercent!=null?`${(inv.equityPercent*100).toFixed(2)}`:'—'}% equity</div>
                     <span className={`sp-badge ${(inv.status??'').toLowerCase()}`}>{inv.status}</span>
                     <div className="sp-invest-date">{fmtDateShort(inv.createdAt)}</div>
                   </div>

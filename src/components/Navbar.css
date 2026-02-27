@@ -11,7 +11,7 @@
   --c-bg:       #2c2f34;           /* чуть светлее фон */
   --c-surface:  #34383f;           /* карточки, меню */
   --c-surface2: #3d4148;           /* второстепенные панели */
-  --c-border:   rgba(255,255,255,0.08);
+  --c-border:   rgba(255, 180, 160, 0.20);
 
   /* ── Акценты ── */
   --c-mint:     #ff927a;           /* мягкий коралловый вместо ярко-мятного */
@@ -24,12 +24,10 @@
   --c-danger:   #ff5a5a;
 
   /* ── Размеры и радиусы ── */
-  --nav-h:      72px;
+  --nav-h:      80px;
   --pill-h:     72px;
   --r:          999px;
   --ease:       cubic-bezier(0.16, 1, 0.3, 1);
-
-    --c-border: rgb(47, 73, 192);
 }
 
 /* ── Base reset ─────────────────────────────────────────────── */
@@ -118,13 +116,36 @@ body {
   color: var(--c-mint);
   flex-shrink: 0;
   transition: background 0.2s, box-shadow 0.2s;
+  position: relative;
 }
+.logo-mark img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
 
+  filter: drop-shadow(0 0 6px rgba(255,146,122,0.4));
+  transition: all 0.3s ease;
+}
 .navbar-logo:hover .logo-mark {
   background: var(--c-border);
   box-shadow: 0 0 20px var(--c-border);
+  filter: drop-shadow(0 0 14px rgba(255,146,122,0.8));
+  transform: scale(1.05);
+}
+.logo-mark::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 12px;
+  background: white;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: -1;
 }
 
+.navbar-logo:hover .logo-mark::before {
+  opacity: 1;
+}
 .logo-text {
   font-family: 'Syne', sans-serif;
   font-weight: 700;

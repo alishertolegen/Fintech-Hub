@@ -73,11 +73,8 @@ useEffect(() => {
           {/* LEFT: Logo */}
           <Link to="/" className="navbar-logo" onClick={closeMenu}>
             <div className="logo-mark">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M10 2L18 6.5V13.5L10 18L2 13.5V6.5L10 2Z" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                <path d="M7 10h2.5m0 0V8m0 2V12m0-2H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-            </div>
+  <img src="/logo_fintech_transparent.png" alt="logo" />
+</div>
             <span className="logo-text">Fintech<em>Hub</em></span>
           </Link>
 
