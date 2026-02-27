@@ -60,6 +60,9 @@ const [industry, setIndustry] = useState<{ value: string; label: string } | null
   /* ── Step 2: Details ── */
   const [website,         setWebsite]         = useState('');
   const [logoUrl,         setLogoUrl]         = useState('');
+        const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+const [imageUploading, setImageUploading] = useState(false);
+const imagesInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 const [logoUploading, setLogoUploading] = useState(false);
   const [attachmentsText, setAttachmentsText] = useState('');
@@ -112,7 +115,32 @@ async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     if (logoInputRef.current) logoInputRef.current.value = '';
   }
 }
-
+async function handleImagesUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  const files = Array.from(e.target.files ?? []);
+  if (!files.length) return;
+  setImageUploading(true);
+  try {
+    const uploaded: string[] = [];
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('http://localhost:8080/api/users/me/avatar', {
+        method: 'POST',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: formData,
+      });
+      if (!res.ok) throw new Error(`Ошибка ${res.status}`);
+      const data = await res.json();
+      if (data.avatarUrl) uploaded.push(data.avatarUrl);
+    }
+    setUploadedImages(prev => [...prev, ...uploaded]);
+  } catch (ex: any) {
+    setError('Не удалось загрузить изображение: ' + ex.message);
+  } finally {
+    setImageUploading(false);
+    if (imagesInputRef.current) imagesInputRef.current.value = '';
+  }
+}
   /* Validation per step */
   function validateStep(s: number): string | null {
     if (s === 0 && !name.trim()) return 'Введите название стартапа.';
@@ -159,6 +187,7 @@ async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
       attachments:   parseAttachments(attachmentsText),
       visibility,
       valuationMode,
+      images: uploadedImages.length > 0 ? uploadedImages : undefined,
     };
 
     try {
@@ -402,6 +431,58 @@ async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
   />
 </div>
               </div>
+
+              <div className="cs-field">
+  <label className="cs-label">
+    <ImageIcon size={12} style={{display:'inline'}} /> Фотографии стартапа
+  </label>
+
+  <div
+    className="cs-logo-thumb"
+    style={{
+      width: '100%', height: 80, borderRadius: 10, cursor: 'pointer',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      border: '1.5px dashed var(--border)', gap: 8,
+      color: 'var(--text-muted)', fontSize: 13,
+    }}
+    onClick={() => imagesInputRef.current?.click()}
+  >
+    {imageUploading
+      ? <div style={{ width: 18, height: 18, border: '2px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      : <><ImageIcon size={16} /> Нажмите чтобы добавить фото</>
+    }
+  </div>
+
+  <input
+    ref={imagesInputRef}
+    type="file"
+    accept="image/*"
+    multiple
+    style={{ display: 'none' }}
+    onChange={handleImagesUpload}
+  />
+
+  {uploadedImages.length > 0 && (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+      {uploadedImages.map((url, i) => (
+        <div key={i} style={{ position: 'relative', width: 80, height: 80 }}>
+          <img src={url} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
+          <button
+            type="button"
+            onClick={() => setUploadedImages(prev => prev.filter((_, idx) => idx !== i))}
+            style={{
+              position: 'absolute', top: -6, right: -6,
+              width: 20, height: 20, borderRadius: '50%',
+              background: '#ff5555', border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontSize: 12, fontWeight: 700,
+            }}
+          >×</button>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
 
               <div className="cs-field">
                 <label className="cs-label">Вложения (URL через новую строку)</label>

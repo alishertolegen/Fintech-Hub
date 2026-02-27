@@ -3,7 +3,7 @@ import React, { JSX, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ExternalLink, BarChart2, FileText, Globe, TrendingUp,
-  Users, Flame, Pencil, Trash2, Plus, X, ArrowDownRight,
+  Users, Flame, Pencil, Trash2, Plus, X, ArrowDownRight, Image as ImageIcon
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import './StartupPage.css';
@@ -36,7 +36,7 @@ const INDUSTRIES = [
 /* ── Types ── */
 type MetricsSnapshot = { mrr?: number|null; users?: number|null; valuationPreMoney?: number|null; valuationPostMoney?: number|null; };
 type MetricRecord    = { _id?: string; startupId?: string; date?: string|number|Date; mrr?: number|null; activeUsers?: number|null; burnRate?: number|null; valuationPreMoney?: number|null; valuationPostMoney?: number|null; other?: Record<string,any>|null; };
-type Startup         = { id?: string; _id?: string; name?: string; slug?: string; founderId?: string; stage?: string; industry?: string; shortPitch?: string; description?: string; website?: string; logoUrl?: string; metricsSnapshot?: MetricsSnapshot; attachments?: string[]|Array<{url?:string;name?:string}>; createdAt?: string|number|Date; updatedAt?: string|number|Date; visibility?: string; valuationMode?: 'pre'|'post'; };
+type Startup         = { id?: string; _id?: string; name?: string; slug?: string; founderId?: string; stage?: string; industry?: string; shortPitch?: string; description?: string; website?: string; logoUrl?: string; metricsSnapshot?: MetricsSnapshot; attachments?: string[]|Array<{url?:string;name?:string}>; createdAt?: string|number|Date; updatedAt?: string|number|Date; visibility?: string; valuationMode?: 'pre'|'post'; images?: string[];};
 type User            = { id?: string; _id?: string; name?: string; username?: string; avatarUrl?: string; role?: string; };
 type Offer           = { id?: string; _id?: string; startupId?: string; investorId?: string; title?: string; amount?: number; equityPercent?: number; type?: string; visibility?: string; status?: string; createdAt?: string|number|Date; note?: string; };
 type Investment      = { id?: string; _id?: string; startupId?: string; investorId?: string; amount?: number; currency?: string; equityPercent?: number; valuationPostMoney?: number; status?: string; createdAt?: string|number|Date; note?: string; };
@@ -139,6 +139,7 @@ export default function StartupPage(): JSX.Element {
 const [showPhone, setShowPhone] = useState(false);
 const [phoneLoading, setPhoneLoading] = useState(false);
 
+const [lightboxIndex, setLightboxIndex] = useState<number|null>(null);
 const maskPhone = (p?: string|null) => {
   if (!p) return '—';
   // заменяем все символы кроме последних 4 на звёздочки
@@ -525,7 +526,63 @@ const maskPhone = (p?: string|null) => {
             </div>
             <p className="sp-desc-text">{startup.description||'Описание не добавлено.'}</p>
           </div>
+            {/* Photos */}
+{startup.images && startup.images.length > 0 && (
+  <div className="sp-section">
+    <div className="sp-section-head">
+      <div className="sp-section-label"><ImageIcon size={10}/>Фотографии</div>
+      <span className="sp-section-count">{startup.images.length}</span>
+    </div>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+      {startup.images.map((url, i) => (
+        <div key={i} style={{
+          width: 'calc(33.33% - 7px)', aspectRatio: '16/9',
+          borderRadius: 10, overflow: 'hidden',
+          border: '1px solid var(--border)', background: 'var(--bg-card)',
+          cursor: 'pointer',
+        }}
+          onClick={() => setLightboxIndex(i)}
+        >
+          <img src={url} alt={`${startup.name} ${i+1}`}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
+{/* Lightbox */}
+{lightboxIndex !== null && startup.images && (
+  <div
+    onClick={() => setLightboxIndex(null)}
+    style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}
+  >
+    <button onClick={e => { e.stopPropagation(); setLightboxIndex(i => i! > 0 ? i!-1 : startup.images!.length-1); }}
+      style={{ position:'absolute', left:24, background:'rgba(255,255,255,0.1)', border:'none', borderRadius:'50%', width:44, height:44, cursor:'pointer', color:'#fff', fontSize:22 }}>‹</button>
+
+    <img
+      src={startup.images[lightboxIndex]}
+      alt=""
+      onClick={e => e.stopPropagation()}
+      style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: 12, objectFit: 'contain', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}
+    />
+
+    <button onClick={e => { e.stopPropagation(); setLightboxIndex(i => i! < startup.images!.length-1 ? i!+1 : 0); }}
+      style={{ position:'absolute', right:24, background:'rgba(255,255,255,0.1)', border:'none', borderRadius:'50%', width:44, height:44, cursor:'pointer', color:'#fff', fontSize:22 }}>›</button>
+
+    <button onClick={() => setLightboxIndex(null)}
+      style={{ position:'absolute', top:20, right:20, background:'rgba(255,255,255,0.1)', border:'none', borderRadius:'50%', width:36, height:36, cursor:'pointer', color:'#fff', fontSize:18 }}>×</button>
+
+    <div style={{ position:'absolute', bottom:20, color:'rgba(255,255,255,0.5)', fontSize:13 }}>
+      {lightboxIndex+1} / {startup.images.length}
+    </div>
+  </div>
+)}
           {/* KPI charts */}
           <div className="sp-section">
             <div className="sp-section-head">
